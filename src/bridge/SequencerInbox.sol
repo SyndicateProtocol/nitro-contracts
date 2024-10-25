@@ -8,6 +8,7 @@ import {
     AlreadyInit,
     HadZeroInit,
     BadPostUpgradeInit,
+    NotEOA,
     NotOrigin,
     DataTooLarge,
     DelayedBackwards,
@@ -94,11 +95,6 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
 
     mapping(bytes32 => DasKeySetInfo) public dasKeySetInfo;
 
-    /// @inheritdoc ISequencerInbox
-    bytes1 public constant EIGENDA_MESSAGE_HEADER_FLAG = 0xed;
-    
-    IRollupManager public eigenDARollupManager;
-
     modifier onlyRollupOwner() {
         if (msg.sender != rollup.owner()) revert NotOwner(msg.sender, rollup.owner());
         _;
@@ -130,6 +126,11 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
     bool internal immutable hostChainIsArbitrum = ArbitrumChecker.runningOnArbitrum();
     // True if the chain this SequencerInbox is deployed on uses custom fee token
     bool public immutable isUsingFeeToken;
+
+    /// @inheritdoc ISequencerInbox
+    bytes1 public constant EIGENDA_MESSAGE_HEADER_FLAG = 0xed;
+    
+    IRollupManager public eigenDARollupManager;
 
     constructor(
         uint256 _maxDataSize,
@@ -479,7 +480,9 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
         uint256 prevMessageCount,
         uint256 newMessageCount
     ) external refundsGas(gasRefunder, IReader4844(address(0))) {
+        if(msg.sender != tx.origin) revert NotOrigin();
         if (!isBatchPoster[msg.sender]) revert NotBatchPoster();
+        if (address(msg.sender).code.length > 0) revert NotEOA();
         // Verify that the blob was actually included before continuing
         eigenDARollupManager.verifyBlob(cert.blobHeader, cert.blobVerificationProof);
         // Form the EigenDA data hash and get the time bounds
