@@ -40,10 +40,19 @@ contract RollupCreator is Ownable {
         address nativeToken;
         bool deployFactoriesToL2;
         uint256 maxFeePerGasForRetryables;
-        //// @dev The address of the batch poster, not used when set to zero address
         address[] batchPosters;
         address batchPosterManager;
         address eigenDARollupManager;
+    }
+
+    modifier onlyUnfrozen() {
+        require(!deploymentFrozen, "Deployment no longer permitted from this RollupCreator");
+        _;
+    }
+
+    modifier onlyOnce() {
+        require(!templatesSet, "Templates already set");
+        _;
     }
 
     BridgeCreator public bridgeCreator;
@@ -57,6 +66,9 @@ contract RollupCreator is Ownable {
     address public validatorWalletCreator;
 
     DeployHelper public l2FactoriesDeployer;
+
+    bool public templatesSet;
+    bool public deploymentFrozen;
 
     constructor() Ownable() {}
 
@@ -73,7 +85,7 @@ contract RollupCreator is Ownable {
         address _validatorUtils,
         address _validatorWalletCreator,
         DeployHelper _l2FactoriesDeployer
-    ) external onlyOwner {
+    ) external onlyOwner onlyOnce {
         bridgeCreator = _bridgeCreator;
         osp = _osp;
         challengeManagerTemplate = _challengeManagerLogic;
@@ -83,6 +95,8 @@ contract RollupCreator is Ownable {
         validatorUtils = _validatorUtils;
         validatorWalletCreator = _validatorWalletCreator;
         l2FactoriesDeployer = _l2FactoriesDeployer;
+
+        templatesSet = true;
         emit TemplatesUpdated();
     }
 
@@ -93,11 +107,11 @@ contract RollupCreator is Ownable {
      * @dev - UpgradeExecutor should be the owner of proxyAdmin which manages bridge contracts
      * @dev - config.rollupOwner should have executor role on upgradeExecutor
      * @dev - Bridge should have a single inbox and outbox
-     * @dev - Validators and batch poster should be set if provided
+     * @dev - Validators, batch posters and batch poster manager should be set if provided
      * @param deployParams The parameters for the rollup deployment. It consists of:
      *          - config        The configuration for the rollup
-     *          - batchPoster   The address of the batch poster, not used when set to zero address
      *          - validators    The list of validator addresses, not used when set to empty list
+     *          - maxDataSize   Max size of the calldata that can be posted
      *          - nativeToken   Address of the custom fee token used by rollup. If rollup is ETH-based address(0) should be provided
      *          - deployFactoriesToL2 Whether to deploy L2 factories using retryable tickets. If true, retryables need to be paid for in native currency.
      *                          Deploying factories via retryable tickets at rollup creation time is the most reliable method to do it since it
@@ -105,12 +119,15 @@ contract RollupCreator is Ownable {
      *                          anyone can try to deploy factories and potentially burn the nonce 0 (ie. due to gas price spike when doing direct
      *                          L2 TX). That would mean we permanently lost capability to deploy deterministic factory at expected address.
      *          - maxFeePerGasForRetryables price bid for L2 execution.
-     *          - dataHashReader The address of the data hash reader used to read blob hashes
+     *          - batchPosters  The list of batch poster addresses, not used when set to empty list
+     *          - batchPosterManager The address which has the ability to rotate batch poster keys
+     *          - eigenDARollupManager The address of the EigenDABlobVerifier    contract
      * @return The address of the newly created rollup
      */
     function createRollup(RollupDeploymentParams memory deployParams)
         public
         payable
+        onlyUnfrozen
         returns (address)
     {
         {
@@ -197,7 +214,7 @@ contract RollupCreator is Ownable {
             bridgeContracts.sequencerInbox.setBatchPosterManager(deployParams.batchPosterManager);
         }
 
-        // Setting EigenDARollupManager
+        // Setting EigenDAServiceManager and EigenDARollupManager
         bridgeContracts.sequencerInbox.setEigenDARollupManager(deployParams.eigenDARollupManager);
 
         // Call setValidator on the newly created rollup contract just if validator set is not empty
@@ -234,6 +251,10 @@ contract RollupCreator is Ownable {
             address(validatorWalletCreator)
         );
         return address(rollup);
+    }
+
+    function freezeDeployment() external onlyOwner {
+        deploymentFrozen = true;
     }
 
     function _deployUpgradeExecutor(address rollupOwner, ProxyAdmin proxyAdmin)
