@@ -123,7 +123,7 @@ jobs:
         with:
           version: nightly
 
-      - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@main
+      - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@debug
         with:
           args: --pos
           no-token-bridge: true
@@ -151,7 +151,7 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@main
+      - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@debug
         with:
           l3-node: true
           no-token-bridge: true
@@ -181,7 +181,7 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@main
+      - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@debug
         with:
           l3-node: true
           args: --l3-fee-token
@@ -212,7 +212,7 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@main
+      - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@debug
         with:
           l3-node: true
           args: --l3-fee-token --l3-fee-token-decimals 6
