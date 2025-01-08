@@ -833,8 +833,8 @@ describe('Orbit Chain', () => {
       maxDataSize,
       nativeToken: nativeTokenAddress,
       deployFactoriesToL2,
-      maxFeePerGasForRetryables, 
-      eigenDARollupManager: "0x0000000000000000000000000000000000000000" // no need to deploy actual rollup manager
+      maxFeePerGasForRetryables,
+      eigenDARollupManager: '0x0000000000000000000000000000000000000000', // no need to deploy actual rollup manager
       // for test flow
     }
 
