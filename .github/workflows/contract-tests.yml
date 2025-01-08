@@ -110,6 +110,10 @@ jobs:
           files: ./contracts/coverage.json
           verbose: false
           token: ${{ secrets.CODECOV_TOKEN }}
+  
+  # TODO: This is test is failing due testnode referencing a latest target when running
+  # a prysm ETH validator. This causes config ingestion to fail and the resource to fail to spin up.
+  # This has already been batched upstream and will need to be incorporated within the next rebasing.
   # test-4844:
   #   name: 4844 tests
   #   runs-on: ubuntu-latest
@@ -191,8 +195,7 @@ jobs:
           args: --l3-fee-token
           no-token-bridge: true
           no-l3-token-bridge: true
-          # eigenda: true
-          # blocked by https://github.com/Layr-Labs/nitro-testnode/pull/18
+          eigenda: true
           nitro-contracts-branch: '${{ github.event.pull_request.head.sha || github.sha }}'
 
       - name: Setup node/yarn
@@ -226,18 +229,18 @@ jobs:
       #         no-l3-token-bridge: true
       #         nitro-contracts-branch: '${{ github.event.pull_request.head.sha || github.sha }}'
 
-      - name: Setup node/yarn
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: 'yarn'
-          cache-dependency-path: '**/yarn.lock'
+      # - name: Setup node/yarn
+      #   uses: actions/setup-node@v3
+      #   with:
+      #     node-version: 18
+      #     cache: 'yarn'
+      #     cache-dependency-path: '**/yarn.lock'
 
-      - name: Install packages
-        run: yarn
+      # - name: Install packages
+      #   run: yarn
 
-      - name: Compile contracts
-        run: yarn build
+      # - name: Compile contracts
+      #   run: yarn build
 
-      - name: Run e2e tests
-        run: yarn test:e2e
+      # - name: Run e2e tests
+      #   run: yarn test:e2e
