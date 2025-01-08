@@ -41,7 +41,7 @@ def:
           * `EigenDABlobVerifierL2`: "verifies" blobs when the rollup parent chain isn't Ethereum. This is effectively
           a noop since EigenDA blobs can only be verified on Ethereum given required access to the `EigenDAServiceManager`.
 
-          Both of this contracts implement the `IRollupManager` interface which is referenced via the `SequencerInbox`.
+          Both of these contracts implement the `IRollupManager` interface which is referenced via the `SequencerInbox`.
         
         globs:
           - "src/bridge/EigenDABlobVerifierL1.sol"
@@ -56,7 +56,7 @@ def:
           Updated rollup creator to:
           
           *  support a `freezing` access modifier which permanently pauses contract functionality and prohibits users
-          for deploying subsequent parent chain system contracts. This is done to prevent users from utilizing older rollup creators mapped to 
+          from deploying subsequent parent chain system contracts. This is done to prevent users from utilizing older rollup creators mapped to 
           outdated system contracts.
 
           * handle the `EigenDARollupManager` contract address as a constructor argument

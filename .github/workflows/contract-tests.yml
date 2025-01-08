@@ -113,7 +113,7 @@ jobs:
   
   # TODO: This is test is failing due testnode referencing a latest target when running
   # a prysm ETH validator. This causes config ingestion to fail and the resource to fail to spin up.
-  # This has already been batched upstream and will need to be incorporated within the next rebasing.
+  # This has already been patched upstream and will need to be incorporated within the next rebasing.
   # test-4844:
   #   name: 4844 tests
   #   runs-on: ubuntu-latest
