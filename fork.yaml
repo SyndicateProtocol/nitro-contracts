@@ -9,7 +9,7 @@ base:
 fork:
   name: Layr-Labs/nitro-contracts
   url: https://github.com/Layr-Labs/nitro-contracts
-  ref: refs/tags/v2.1.0
+  ref: refs/heads/eigenda
 def:
     title: "EigenDA x Arbitrum Nitro Contracts fork diff"
     description: | # description in markdown
