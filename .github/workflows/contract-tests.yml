@@ -110,39 +110,43 @@ jobs:
           files: ./contracts/coverage.json
           verbose: false
           token: ${{ secrets.CODECOV_TOKEN }}
-  test-4844:
-    name: 4844 tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
+  # test-4844:
+  #   name: 4844 tests
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
 
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
+  #     - name: Install Foundry
+  #       uses: foundry-rs/foundry-toolchain@v1
+  #       with:
+  #         version: nightly
 
-      - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@main
-        with:
-          args: --pos
-          no-token-bridge: true
+  #     - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@main
+  #       with:
+  #         args: --pos
+  #         no-token-bridge: true
 
-      - name: Setup nodejs
-        uses: actions/setup-node@v2
-        with:
-          node-version: 18
-          cache: 'yarn'
-          cache-dependency-path: '**/yarn.lock'
+  #     - name: Setup nodejs
+  #       uses: actions/setup-node@v2
+  #       with:
+  #         node-version: 18
+  #         cache: 'yarn'
+  #         cache-dependency-path: '**/yarn.lock'
 
-      - name: Install dependencies
-        run: yarn install
+  #     - name: Install dependencies
+  #       run: yarn install
 
-      - name: Build
-        run: yarn build:all
+  #     - name: Build
+  #       run: yarn build:all
 
-      - name: Test 4844
-        run: yarn test:4844
+  #     - name: Test 4844
+  #       run: yarn test:4844
+  
+  # NOTE: OCL disables theses tests by default, not worth fixing until
+  # they are supported upstream
+  # SEE for ref: https://github.com/OffchainLabs/nitro-contracts/blob/94999b3e2d3b4b7f8e771cc458b9eb229620dd8f/.github/workflows/contract-tests.yml#L153-L247
   # test-e2e:
   #   name: Test e2e
   #   runs-on: ubuntu-latest
@@ -187,7 +191,8 @@ jobs:
           args: --l3-fee-token
           no-token-bridge: true
           no-l3-token-bridge: true
-          eigenda: true
+          # eigenda: true
+          # blocked by https://github.com/Layr-Labs/nitro-testnode/pull/18
           nitro-contracts-branch: '${{ github.event.pull_request.head.sha || github.sha }}'
 
       - name: Setup node/yarn
