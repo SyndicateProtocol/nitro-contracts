@@ -14,7 +14,7 @@ import "./IOneStepProver.sol";
 import "../bridge/Messages.sol";
 import "../bridge/IBridge.sol";
 
-import {BN254} from "@eigenda/eigenda-utils/libraries/BN254.sol";
+import {BN254} from "@eigenda/contracts/lib/eigenlayer-middleware/src/libraries/BN254.sol";
 
 contract OneStepProverHostIo is IOneStepProver {
     using GlobalStateLib for GlobalState;
@@ -359,7 +359,7 @@ contract OneStepProverHostIo is IOneStepProver {
                 uint256 z = uint256(bytes32(kzgProof[0:32]));
                 uint256 y = uint256(bytes32(kzgProof[32:64]));
                 uint32 length_u32 = uint32(uint256(bytes32(kzgProof[320:352])));
-                
+
                 require(kzgCommitment[0] < BN254.FP_MODULUS, "COMMIT_X_LARGER_THAN_FIELD");
                 require(kzgCommitment[1] < BN254.FP_MODULUS, "COMMIT_Y_LARGER_THAN_FIELD");
 

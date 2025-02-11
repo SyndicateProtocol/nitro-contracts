@@ -9,10 +9,8 @@ pragma experimental ABIEncoderV2;
 import "../libraries/IGasRefunder.sol";
 import "./IDelayedMessageProvider.sol";
 import "./IBridge.sol";
-import "./IRollupManager.sol";
 
-import {EigenDARollupUtils} from "@eigenda/eigenda-utils/libraries/EigenDARollupUtils.sol";
-import {IEigenDAServiceManager} from "@eigenda/eigenda-utils/interfaces/IEigenDAServiceManager.sol";
+import "@eigenda/contracts/src/interfaces/IEigenDACertVerifier.sol";
 
 interface ISequencerInbox is IDelayedMessageProvider {
     struct MaxTimeVariation {
@@ -31,11 +29,6 @@ interface ISequencerInbox is IDelayedMessageProvider {
         IBridge.TimeBounds timeBounds,
         IBridge.BatchDataLocation dataLocation
     );
-
-    struct EigenDACert {
-        EigenDARollupUtils.BlobVerificationProof blobVerificationProof;
-        IEigenDAServiceManager.BlobHeader blobHeader;
-    }
 
     struct SequenceMetadata {
         uint256 sequenceNumber;
@@ -117,7 +110,12 @@ interface ISequencerInbox is IDelayedMessageProvider {
     ///         This enables the batch poster to do key rotation
     function batchPosterManager() external view returns (address);
 
-    function eigenDARollupManager() external view returns (IRollupManager);
+    function eigenDACertVerifier() external view returns (IEigenDACertVerifier);
+
+    struct EigenDACert {
+        BlobVerificationProof blobVerificationProof;
+        BlobHeader blobHeader;
+    }
 
     struct DasKeySetInfo {
         bool isValidKeyset;
@@ -215,9 +213,9 @@ interface ISequencerInbox is IDelayedMessageProvider {
     // ---------- onlyRollupOrOwner functions ----------
     /**
      * @notice Set the rollup manager contract address
-     * @param newRollupManager the new rollup manager contract address
+     * @param newCertVerifier the new rollup manager contract address
      */
-    function setEigenDARollupManager(address newRollupManager) external;
+    function setEigenDACertVerifier(address newCertVerifier) external;
 
     /**
      * @notice Set max delay for sequencer inbox

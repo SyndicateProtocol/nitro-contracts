@@ -14,6 +14,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import {DeployHelper} from "./DeployHelper.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "@eigenda/contracts/src/interfaces/IEigenDACertVerifier.sol";
+
 contract RollupCreator is Ownable {
     using SafeERC20 for IERC20;
 
@@ -42,7 +44,7 @@ contract RollupCreator is Ownable {
         uint256 maxFeePerGasForRetryables;
         address[] batchPosters;
         address batchPosterManager;
-        address eigenDARollupManager;
+        address eigenDACertVerifier;
     }
 
     modifier onlyUnfrozen() {
@@ -121,7 +123,7 @@ contract RollupCreator is Ownable {
      *          - maxFeePerGasForRetryables price bid for L2 execution.
      *          - batchPosters  The list of batch poster addresses, not used when set to empty list
      *          - batchPosterManager The address which has the ability to rotate batch poster keys
-     *          - eigenDARollupManager The address of the EigenDABlobVerifier    contract
+     *          - eigenDACertVerifier The address of the EigenDABlobVerifier    contract
      * @return The address of the newly created rollup
      */
     function createRollup(RollupDeploymentParams memory deployParams)
@@ -214,8 +216,8 @@ contract RollupCreator is Ownable {
             bridgeContracts.sequencerInbox.setBatchPosterManager(deployParams.batchPosterManager);
         }
 
-        // Setting EigenDAServiceManager and EigenDARollupManager
-        bridgeContracts.sequencerInbox.setEigenDARollupManager(deployParams.eigenDARollupManager);
+        // Setting EigenDAServiceManager and eigenDACertVerifier
+        bridgeContracts.sequencerInbox.setEigenDACertVerifier(deployParams.eigenDACertVerifier);
 
         // Call setValidator on the newly created rollup contract just if validator set is not empty
         if (deployParams.validators.length != 0) {

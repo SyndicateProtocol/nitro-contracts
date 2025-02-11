@@ -58,7 +58,7 @@
   "private": false,
   "devDependencies": {
     "@arbitrum/sdk": "^3.4.1",
-    "@eigenda/eigenda-utils": "2.0.0",
+    "@eigenda/contracts": "0.1.0-rc-2",
     "@ethersproject/providers": "^5.7.2",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.3.0-beta.13",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",

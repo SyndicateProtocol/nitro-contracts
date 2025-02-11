@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat'
 import '@nomiclabs/hardhat-ethers'
-import { deployAllContracts, deployBlobVerifierL1 } from '../deploymentUtils'
+import { deployAllContracts } from '../deploymentUtils'
 import { createRollup } from '../rollupCreation'
 import { promises as fs } from 'fs'
 import { BigNumber } from 'ethers'

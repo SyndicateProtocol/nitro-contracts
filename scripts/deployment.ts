@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat'
 import '@nomiclabs/hardhat-ethers'
 import { deployAllContracts } from './deploymentUtils'
-import { maxDataSize } from './config'
+import { maxDataSize, eigenDACertVerifier } from './config'
 
 async function main() {
   const [signer] = await ethers.getSigners()
@@ -11,6 +11,7 @@ async function main() {
     const contracts = await deployAllContracts(
       signer,
       ethers.BigNumber.from(maxDataSize),
+      eigenDACertVerifier,
       true
     )
 
