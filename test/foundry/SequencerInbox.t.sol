@@ -199,33 +199,18 @@ contract SequencerInboxTest is Test {
 
         bytes32 dataHash;
 
-        if (isUsingEigenDA) {
-            dataHash = keccak256(
-                bytes.concat(
-                    abi.encodePacked(
-                        timeBounds.minTimestamp,
-                        timeBounds.maxTimestamp,
-                        timeBounds.minBlockNumber,
-                        timeBounds.maxBlockNumber,
-                        uint64(delayedMessagesRead)
-                    ),
-                    data
-                )
-            );
-        } else {
-            dataHash = keccak256(
-                bytes.concat(
-                    abi.encodePacked(
-                        timeBounds.minTimestamp,
-                        timeBounds.maxTimestamp,
-                        timeBounds.minBlockNumber,
-                        timeBounds.maxBlockNumber,
-                        uint64(delayedMessagesRead)
-                    ),
-                    data
-                )
-            );
-        }
+        dataHash = keccak256(
+            bytes.concat(
+                abi.encodePacked(
+                    timeBounds.minTimestamp,
+                    timeBounds.maxTimestamp,
+                    timeBounds.minBlockNumber,
+                    timeBounds.maxBlockNumber,
+                    uint64(delayedMessagesRead)
+                ),
+                data
+            )
+        );
 
         bytes32 beforeAcc = bytes32(0);
         bytes32 delayedAcc = bridge.delayedInboxAccs(delayedMessagesRead - 1);

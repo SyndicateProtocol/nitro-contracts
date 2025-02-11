@@ -478,9 +478,15 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
         }
     }
 
-    // pessimistic verification
-    function verifyEigenDACert(EigenDACert calldata cert) internal {
+    // pessimistically verify certificates for the following acceptance criteria:
+    //  (A) punctuality: A cert must have been dispersed and bridged within the last 100 blocks
+    //
+    //  (B) integrity: A cert must be correct regarding its (quorums, thresholds) & successfully
+    //                 correlate to an EigenDA batch merkle root persisted on the service manager
+    function verifyEigenDACert(EigenDACert calldata cert) internal view {
         // If cert verifier is set then verify that the blob was actually included before continuing
+        // This allows for verification to be disabled in chain environments where it cannot be supported
+        // Ie L3s || L2s that don't settle to Ethereum
         if (address(eigenDACertVerifier) != address(0)) {
             if (
                 (cert.blobVerificationProof.batchMetadata.confirmationBlockNumber +
@@ -524,15 +530,10 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
         });
 
         // Call a helper function to add the sequencer L2 batch
-        _addSequencerL2Batch(metadata, dataHash, timeBounds);
-
-        if (calldataLengthPosted > 0 && !isUsingFeeToken) {
-            // only report batch poster spendings if chain is using ETH as native currency
-            submitBatchSpendingReport(dataHash, seqMessageIndex, block.basefee, 0);
-        }
+        _addSequencerL2BatchEigenDA(metadata, dataHash, timeBounds);
     }
 
-    function _addSequencerL2Batch(
+    function _addSequencerL2BatchEigenDA(
         ISequencerInbox.SequenceMetadata memory sequenceMetadata,
         bytes32 dataHash,
         IBridge.TimeBounds memory timeBounds
@@ -565,6 +566,13 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
             timeBounds,
             IBridge.BatchDataLocation.EigenDA
         );
+
+        if (!isUsingFeeToken) {
+            // only report batch poster spendings if chain is using ETH as native currency.
+            // this only amoritizes fees spent for submitting an EigenDA certificate to the inbox
+            // && doesn't compensate for the cost paid when dispersing a blob to the DA network
+            submitBatchSpendingReport(dataHash, seqMessageIndex, block.basefee, 0);
+        }
     }
 
     function addSequencerL2Batch(
