@@ -479,7 +479,8 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
     }
 
     // pessimistically verify certificates for the following acceptance criteria:
-    //  (A) punctuality: A cert must have been dispersed and bridged within the last 100 blocks
+    //  (A) punctuality: A cert must have been dispersed and bridged within the last 
+    //                   MAX_EIGENDA_CERTIFICATE_DRIFT blocks
     //
     //  (B) integrity: A cert must be correct regarding its (quorums, thresholds) & successfully
     //                 correlate to an EigenDA batch merkle root persisted on the service manager
