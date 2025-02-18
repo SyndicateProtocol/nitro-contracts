@@ -21,7 +21,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: stable
 
       - name: Setup node/yarn
         uses: actions/setup-node@v3
@@ -50,7 +50,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: stable
 
       - name: Setup nodejs
         uses: actions/setup-node@v2
@@ -62,7 +62,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: stable
 
       - name: Install dependencies
         run: yarn install
@@ -110,22 +110,22 @@ jobs:
           files: ./contracts/coverage.json
           verbose: false
           token: ${{ secrets.CODECOV_TOKEN }}
-  
-  # TODO: This is test is failing due testnode referencing a latest target when running
-  # a prysm ETH validator. This causes config ingestion to fail and the resource to fail to spin up.
-  # This has already been patched upstream and will need to be incorporated within the next rebasing.
-  # test-4844:
-  #   name: 4844 tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         submodules: recursive
 
-  #     - name: Install Foundry
-  #       uses: foundry-rs/foundry-toolchain@v1
-  #       with:
-  #         version: nightly
+      - name: Upload 4bytes
+        run: yarn upload-4bytes
+
+  test-4844:
+    name: 4844 tests
+    runs-on: linux-2xl
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
 
   #     - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@main
   #       with:
