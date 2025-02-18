@@ -1,15 +1,1 @@
-| Name                        | Type                                                     | Slot | Offset | Bytes | Contract                                     |
-|-----------------------------|----------------------------------------------------------|------|--------|-------|----------------------------------------------|
-| totalDelayedMessagesRead    | uint256                                                  | 0    | 0      | 32    | src/bridge/SequencerInbox.sol:SequencerInbox |
-| bridge                      | contract IBridge                                         | 1    | 0      | 20    | src/bridge/SequencerInbox.sol:SequencerInbox |
-| rollup                      | contract IOwnable                                        | 2    | 0      | 20    | src/bridge/SequencerInbox.sol:SequencerInbox |
-| isBatchPoster               | mapping(address => bool)                                 | 3    | 0      | 32    | src/bridge/SequencerInbox.sol:SequencerInbox |
-| __LEGACY_MAX_TIME_VARIATION | struct ISequencerInbox.MaxTimeVariation                  | 4    | 0      | 128   | src/bridge/SequencerInbox.sol:SequencerInbox |
-| dasKeySetInfo               | mapping(bytes32 => struct ISequencerInbox.DasKeySetInfo) | 8    | 0      | 32    | src/bridge/SequencerInbox.sol:SequencerInbox |
-| eigenDARollupManager        | contract IRollupManager                                  | 9    | 0      | 20    | src/bridge/SequencerInbox.sol:SequencerInbox |
-| isSequencer                 | mapping(address => bool)                                 | 10   | 0      | 32    | src/bridge/SequencerInbox.sol:SequencerInbox |
-| delayBlocks                 | uint64                                                   | 11   | 0      | 8     | src/bridge/SequencerInbox.sol:SequencerInbox |
-| futureBlocks                | uint64                                                   | 11   | 8      | 8     | src/bridge/SequencerInbox.sol:SequencerInbox |
-| delaySeconds                | uint64                                                   | 11   | 16     | 8     | src/bridge/SequencerInbox.sol:SequencerInbox |
-| futureSeconds               | uint64                                                   | 11   | 24     | 8     | src/bridge/SequencerInbox.sol:SequencerInbox |
-| batchPosterManager          | address                                                  | 12   | 0      | 20    | src/bridge/SequencerInbox.sol:SequencerInbox |
+[2m2025-02-18T13:21:02.264087Z[0m [31mERROR[0m [2mfoundry_compilers_artifacts_solc::sources[0m[2m:[0m [3merror[0m[2m=[0m"/Users/ethenpociask/eigenlayer/nitro/contracts/node_modules/@eigenda/eigenda-utils/libraries/EigenDARollupUtils.sol": No such file or directory (os error 2)
