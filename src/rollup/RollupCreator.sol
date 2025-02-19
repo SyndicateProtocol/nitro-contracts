@@ -216,8 +216,10 @@ contract RollupCreator is Ownable {
             bridgeContracts.sequencerInbox.setBatchPosterManager(deployParams.batchPosterManager);
         }
 
-        // Setting EigenDAServiceManager and eigenDACertVerifier
-        bridgeContracts.sequencerInbox.setEigenDACertVerifier(deployParams.eigenDACertVerifier);
+        // Setting eigenDACertVerifier
+        if (deployParams.eigenDACertVerifier != address(0)) {
+            bridgeContracts.sequencerInbox.setEigenDACertVerifier(deployParams.eigenDACertVerifier);
+        }
 
         // Call setValidator on the newly created rollup contract just if validator set is not empty
         if (deployParams.validators.length != 0) {
