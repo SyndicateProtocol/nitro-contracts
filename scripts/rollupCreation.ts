@@ -116,7 +116,7 @@ export async function createRollup(
           maxFeePerGasForRetryables: MAX_FER_PER_GAS,
           batchPosters: config.batchPosters,
           batchPosterManager: config.batchPosterManager,
-          eigenDACertVerifier: eigenDACertVerifier,
+          eigenDACertVerifier: ethers.constants.AddressZero,
         }
     
     console.log(deployParams);
@@ -228,7 +228,7 @@ export async function createRollup(
 }
 
 async function _getDevRollupConfig(
-  rollupManager: string,
+  eigenDACertVerifier: string,
   feeToken: string,
   validatorWalletCreator: string
 ) {
@@ -329,7 +329,7 @@ async function _getDevRollupConfig(
     maxFeePerGasForRetryables: MAX_FER_PER_GAS,
     batchPosters: batchPosters,
     batchPosterManager: batchPosterManager,
-    eigenDACertVerifier: rollupManager,
+    eigenDACertVerifier: ethers.constants.AddressZero,
   }
 
   function _createValidatorAddress(
