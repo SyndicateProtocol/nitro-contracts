@@ -34,12 +34,15 @@ async function main() {
     throw new Error('ROLLUP_CREATOR_ADDRESS not set')
   }
 
+  const eigenDACertVerifierAddress = ethers.constants.AddressZero
+
   console.log('Creating new rollup with', customFeeTokenAddress, 'as fee token')
   await createRollup(
     deployer,
     false,
     rollupCreatorAddress,
-    customFeeTokenAddress
+    customFeeTokenAddress,
+    eigenDACertVerifierAddress
   )
 }
 
