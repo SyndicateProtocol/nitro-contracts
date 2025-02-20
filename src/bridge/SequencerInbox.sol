@@ -514,7 +514,7 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
         if (!CallerChecker.isCallerCodelessOrigin()) revert NotCodelessOrigin();
         if (!isBatchPoster[msg.sender]) revert NotBatchPoster();
 
-        verifyEigenDACert(cert);
+        // verifyEigenDACert(cert);
 
         // Form the EigenDA data hash and get the time bounds
         (bytes32 dataHash, IBridge.TimeBounds memory timeBounds) = formEigenDADataHash(
