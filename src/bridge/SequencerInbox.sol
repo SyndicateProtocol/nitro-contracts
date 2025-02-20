@@ -488,7 +488,7 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
         // If cert verifier is set then verify that the blob was actually included before continuing
         // This allows for verification to be disabled in chain environments where it cannot be supported
         // Ie L3s || L2s that don't settle to Ethereum
-        if (address(eigenDACertVerifier) != address(0)) {
+        if (eigenDACertVerifier != IEigenDACertVerifier(address(0))) {
             if (
                 (cert.blobVerificationProof.batchMetadata.confirmationBlockNumber +
                     MAX_EIGENDA_CERTIFICATE_DRIFT) < block.number
@@ -511,9 +511,8 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
         uint256 prevMessageCount,
         uint256 newMessageCount
     ) external refundsGas(gasRefunder, IReader4844(address(0))) {
-        if (msg.sender != tx.origin) revert NotOrigin();
+        if (!CallerChecker.isCallerCodelessOrigin()) revert NotCodelessOrigin();
         if (!isBatchPoster[msg.sender]) revert NotBatchPoster();
-        if (address(msg.sender).code.length > 0) revert NotEOA();
 
         verifyEigenDACert(cert);
 
