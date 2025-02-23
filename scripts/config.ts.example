@@ -4,6 +4,8 @@ import { ethers } from 'ethers'
 // This need to be adjusted for Orbit chains
 export const maxDataSize = 117964
 
+export const eigenDACertVerifierAddress = '0x1234512345123451234512345123451234512345'
+
 export const config = {
   rollupConfig: {
     confirmPeriodBlocks: ethers.BigNumber.from('45818'),

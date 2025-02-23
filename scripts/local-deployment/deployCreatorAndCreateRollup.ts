@@ -44,7 +44,7 @@ async function main() {
 
   /// deploy templates and rollup creator
   console.log('Deploy RollupCreator')
-  const contracts = await deployAllContracts(deployerWallet, maxDataSize, false)
+  const contracts = await deployAllContracts(deployerWallet, maxDataSize, ethers.constants.AddressZero, false)
 
   console.log('Set templates on the Rollup Creator')
   await (
@@ -75,7 +75,7 @@ async function main() {
     true,
     contracts.rollupCreator.address,
     feeToken,
-    contracts.eigenDARollupManager.address,
+    ethers.constants.AddressZero
   )
 
   if (!result) {

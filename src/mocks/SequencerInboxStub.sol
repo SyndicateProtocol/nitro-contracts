@@ -5,12 +5,9 @@
 pragma solidity ^0.8.0;
 
 import "../bridge/SequencerInbox.sol";
-import "../bridge/EigenDABlobVerifierL2.sol";
 
 import "../bridge/IEthBridge.sol";
 import {INITIALIZATION_MSG_TYPE} from "../libraries/MessageTypes.sol";
-
-import "../bridge/IRollupManager.sol";
 
 contract SequencerInboxStub is SequencerInbox {
     constructor(
@@ -30,8 +27,7 @@ contract SequencerInboxStub is SequencerInbox {
         isBatchPoster[sequencer_] = true;
 
         // inject dummy rollup manager dependency for testing
-        IRollupManager bv = new EigenDABlobVerifierL2();
-        eigenDARollupManager = bv;
+        eigenDACertVerifier = IEigenDACertVerifier(address(0));
     }
 
     function addInitMessage(uint256 chainId) external {

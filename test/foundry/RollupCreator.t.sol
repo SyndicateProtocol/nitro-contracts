@@ -28,8 +28,6 @@ contract RollupCreatorTest is Test {
     IRollupUser public rollupUser;
     DeployHelper public deployHelper;
     IReader4844 dummyReader4844 = IReader4844(address(137));
-    IEigenDAServiceManager dummyEigenDAServiceManager = IEigenDAServiceManager(address(138));
-    IRollupManager rollupManager = IRollupManager(address(139));
 
     // 1 gwei
     uint256 public constant MAX_FEE_PER_GAS = 1_000_000_000;
@@ -127,8 +125,7 @@ contract RollupCreatorTest is Test {
         validators[0] = makeAddr("validator1");
         validators[1] = makeAddr("validator2");
 
-        address eigenDASvcManager = makeAddr("eigenDASvcManager");
-        address eigenDARollupManager = makeAddr("rollupManager");
+        address eigenDACertVerifier = makeAddr("EigenDACertVerifier");
 
         RollupCreator.RollupDeploymentParams memory deployParams = RollupCreator
             .RollupDeploymentParams({
@@ -140,7 +137,7 @@ contract RollupCreatorTest is Test {
                 deployFactoriesToL2: true,
                 maxFeePerGasForRetryables: MAX_FEE_PER_GAS,
                 batchPosterManager: batchPosterManager,
-                eigenDARollupManager: eigenDARollupManager
+                eigenDACertVerifier: eigenDACertVerifier
             });
 
         address rollupAddress = rollupCreator.createRollup{value: factoryDeploymentFunds}(
@@ -287,7 +284,7 @@ contract RollupCreatorTest is Test {
         address[] memory validators = new address[](2);
         validators[0] = makeAddr("validator1");
         validators[1] = makeAddr("validator2");
-        address eigenDARollupManager = makeAddr("rollupManager");
+        address eigenDACertVerifier = makeAddr("eigenDACertVerifier");
 
         RollupCreator.RollupDeploymentParams memory deployParams = RollupCreator
             .RollupDeploymentParams({
@@ -299,7 +296,7 @@ contract RollupCreatorTest is Test {
                 deployFactoriesToL2: true,
                 maxFeePerGasForRetryables: MAX_FEE_PER_GAS,
                 batchPosterManager: batchPosterManager,
-                eigenDARollupManager: eigenDARollupManager
+                eigenDACertVerifier: eigenDACertVerifier
             });
 
         address rollupAddress = rollupCreator.createRollup(deployParams);
@@ -445,7 +442,7 @@ contract RollupCreatorTest is Test {
         validators[0] = makeAddr("validator1");
         validators[1] = makeAddr("validator2");
 
-        address eigenDARollupManager = makeAddr("rollupManager");
+        address eigenDACertVerifier = makeAddr("eigenDACertVerifier");
 
         RollupCreator.RollupDeploymentParams memory deployParams = RollupCreator
             .RollupDeploymentParams({
@@ -457,14 +454,12 @@ contract RollupCreatorTest is Test {
                 deployFactoriesToL2: true,
                 maxFeePerGasForRetryables: MAX_FEE_PER_GAS,
                 batchPosterManager: batchPosterManager,
-                eigenDARollupManager: eigenDARollupManager
+                eigenDACertVerifier: eigenDACertVerifier
             });
 
         vm.expectRevert("Deployment no longer permitted from this RollupCreator");
-        rollupCreator.createRollup{value: factoryDeploymentFunds}(
-            deployParams
-        );
-        
+        rollupCreator.createRollup{value: factoryDeploymentFunds}(deployParams);
+
         vm.stopPrank();
     }
 
@@ -539,7 +534,7 @@ contract RollupCreatorTest is Test {
         address[] memory validators = new address[](2);
         validators[0] = makeAddr("validator1");
         validators[1] = makeAddr("validator2");
-        address eigenDARollupManager = makeAddr("rollupManager");
+        address eigenDACertVerifier = makeAddr("eigenDACertVerifier");
 
         RollupCreator.RollupDeploymentParams memory deployParams = RollupCreator
             .RollupDeploymentParams({
@@ -551,7 +546,7 @@ contract RollupCreatorTest is Test {
                 deployFactoriesToL2: true,
                 maxFeePerGasForRetryables: MAX_FEE_PER_GAS,
                 batchPosterManager: batchPosterManager,
-                eigenDARollupManager: eigenDARollupManager
+                eigenDACertVerifier: eigenDACertVerifier
             });
         address rollupAddress = rollupCreator.createRollup{value: factoryDeploymentFunds}(
             deployParams

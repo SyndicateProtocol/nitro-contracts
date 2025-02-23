@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat'
 import '@nomiclabs/hardhat-ethers'
 import { deployAllContracts, _isRunningOnArbitrum } from './deploymentUtils'
-import { maxDataSize } from './config'
+import { maxDataSize, eigenDACertVerifier } from './config'
 
 import {
   ArbSys__factory
@@ -27,6 +27,7 @@ async function main() {
     const contracts = await deployAllContracts(
       signer,
       ethers.BigNumber.from(maxDataSize),
+      eigenDACertVerifier,
       true
     )
 

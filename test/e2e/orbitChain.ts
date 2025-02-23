@@ -851,6 +851,8 @@ describe('Orbit Chain', () => {
       nativeToken: nativeTokenAddress,
       deployFactoriesToL2,
       maxFeePerGasForRetryables,
+      eigenDACertVerifier: '0x0000000000000000000000000000000000000000', // no need to deploy actual rollup manager
+      // for test flow
     }
 
     /// deploy it

@@ -299,6 +299,7 @@ const setup = async () => {
     deployFactoriesToL2: true,
     maxFeePerGasForRetryables: maxFeePerGas,
     batchPosterManager: await batchPosterManager.getAddress(),
+    eigenDACertVerifier: ethers.constants.AddressZero,
   }
 
   const response = await rollupCreator.createRollup(deployParams, {

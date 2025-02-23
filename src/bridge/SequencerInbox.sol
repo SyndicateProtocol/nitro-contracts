@@ -8,7 +8,6 @@ import {
     AlreadyInit,
     HadZeroInit,
     BadPostUpgradeInit,
-    NotEOA,
     NotOrigin,
     DataTooLarge,
     DelayedBackwards,
@@ -31,7 +30,8 @@ import {
     InvalidHeaderFlag,
     NativeTokenMismatch,
     BadMaxTimeVariation,
-    Deprecated
+    Deprecated,
+    ExpiredEigenDACert
 } from "../libraries/Error.sol";
 import "./IBridge.sol";
 import "./IInboxBase.sol";
@@ -49,7 +49,7 @@ import {IGasRefunder} from "../libraries/IGasRefunder.sol";
 import {GasRefundEnabled} from "../libraries/GasRefundEnabled.sol";
 import "../libraries/ArbitrumChecker.sol";
 import {IERC20Bridge} from "./IERC20Bridge.sol";
-import "./IRollupManager.sol";
+import "@eigenda/contracts/src/interfaces/IEigenDACertVerifier.sol";
 
 /**
  * @title  Accepts batches from the sequencer and adds them to the rollup inbox.
@@ -131,12 +131,13 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
 
     /// @inheritdoc ISequencerInbox
     bytes1 public constant EIGENDA_MESSAGE_HEADER_FLAG = 0xed;
-    
+
     // gap used to ensure forward compatiblity with newly introduced storage variables
     // from upstream offchainlabs/nitro-contracts. Any newly introduced storage vars
     // made in subsequent releases should result in decrementing the gap counter
     uint256[38] internal __gap;
-    IRollupManager public eigenDARollupManager;
+    IEigenDACertVerifier public eigenDACertVerifier;
+    uint256 internal constant MAX_EIGENDA_CERTIFICATE_DRIFT = 100;
 
     constructor(
         uint256 _maxDataSize,
@@ -476,6 +477,31 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
         }
     }
 
+    // pessimistically verify certificates for the following acceptance criteria:
+    //  (A) punctuality: A cert must have been dispersed and bridged within the last
+    //                   MAX_EIGENDA_CERTIFICATE_DRIFT blocks
+    //
+    //  (B) integrity: A cert must be correct regarding its (quorums, thresholds) & successfully
+    //                 correlate to an EigenDA batch merkle root persisted on the service manager
+    function verifyEigenDACert(EigenDACert calldata cert) internal view {
+        // If cert verifier is set then verify that the blob was actually included before continuing
+        // This allows for verification to be disabled in chain environments where it cannot be supported
+        // Ie L3s || L2s that don't settle to Ethereum
+        if (eigenDACertVerifier != IEigenDACertVerifier(address(0))) {
+            if (
+                (cert.blobVerificationProof.batchMetadata.confirmationBlockNumber +
+                    MAX_EIGENDA_CERTIFICATE_DRIFT) < block.number
+            ) {
+                revert ExpiredEigenDACert(
+                    block.number,
+                    cert.blobVerificationProof.batchMetadata.confirmationBlockNumber +
+                        MAX_EIGENDA_CERTIFICATE_DRIFT
+                );
+            }
+            eigenDACertVerifier.verifyDACertV1(cert.blobHeader, cert.blobVerificationProof);
+        }
+    }
+
     function addSequencerL2BatchFromEigenDA(
         uint256 sequenceNumber,
         EigenDACert calldata cert,
@@ -484,11 +510,11 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
         uint256 prevMessageCount,
         uint256 newMessageCount
     ) external refundsGas(gasRefunder, IReader4844(address(0))) {
-        if(msg.sender != tx.origin) revert NotOrigin();
+        if (!CallerChecker.isCallerCodelessOrigin()) revert NotCodelessOrigin();
         if (!isBatchPoster[msg.sender]) revert NotBatchPoster();
-        if (address(msg.sender).code.length > 0) revert NotEOA();
-        // Verify that the blob was actually included before continuing
-        eigenDARollupManager.verifyBlob(cert.blobHeader, cert.blobVerificationProof);
+
+        verifyEigenDACert(cert);
+
         // Form the EigenDA data hash and get the time bounds
         (bytes32 dataHash, IBridge.TimeBounds memory timeBounds) = formEigenDADataHash(
             cert,
@@ -503,10 +529,10 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
         });
 
         // Call a helper function to add the sequencer L2 batch
-        _addSequencerL2Batch(metadata, dataHash, timeBounds);
+        _addSequencerL2BatchEigenDA(metadata, dataHash, timeBounds);
     }
 
-    function _addSequencerL2Batch(
+    function _addSequencerL2BatchEigenDA(
         ISequencerInbox.SequenceMetadata memory sequenceMetadata,
         bytes32 dataHash,
         IBridge.TimeBounds memory timeBounds
@@ -539,6 +565,13 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
             timeBounds,
             IBridge.BatchDataLocation.EigenDA
         );
+
+        if (!isUsingFeeToken) {
+            // only report batch poster spendings if chain is using ETH as native currency.
+            // this only amoritizes fees spent for submitting an EigenDA certificate to the inbox
+            // && doesn't compensate for the cost paid when dispersing a blob to the DA network
+            submitBatchSpendingReport(dataHash, seqMessageIndex, block.basefee, 0);
+        }
     }
 
     function addSequencerL2Batch(
@@ -886,8 +919,8 @@ contract SequencerInbox is DelegateCallAware, GasRefundEnabled, ISequencerInbox 
         emit OwnerFunctionCalled(5);
     }
 
-    function setEigenDARollupManager(address newRollupManager) external onlyRollupOwner {
-        eigenDARollupManager = IRollupManager(newRollupManager);
+    function setEigenDACertVerifier(address newCertVerifier) external onlyRollupOwner {
+        eigenDACertVerifier = IEigenDACertVerifier(newCertVerifier);
         emit OwnerFunctionCalled(6);
     }
 
