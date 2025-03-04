@@ -370,7 +370,7 @@ contract OneStepProverHostIo is IOneStepProver {
                 require(z < BN254.FR_MODULUS, "Z_LARGER_THAN_FIELD");
                 require(y < BN254.FR_MODULUS, "Y_LARGER_THAN_FIELD");
 
-                // preimage hash must be recomputable from serialized kzgbn254 proof 
+                // preimage hash must be recomputable from serialized kzgbn254 proof
                 // which matches that persisted in agreed upon merkalized machine prestate
                 require(
                     keccak256(abi.encodePacked(kzgProof[192:256], length_u32)) == leafContents,
