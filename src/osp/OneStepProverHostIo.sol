@@ -326,7 +326,7 @@ contract OneStepProverHostIo is IOneStepProver {
                 extracted = kzgProof[64:96];
             }
         } else if (inst.argumentData == 3) {
-            // The machine is asking for a EigenDA versioned hash preimage
+            // The machine is asking for an EigenDA versioned hash preimage
 
             require(proofType == 0, "UNKNOWN_EIGENDA_PREIMAGE_PROOF");
 
@@ -339,7 +339,7 @@ contract OneStepProverHostIo is IOneStepProver {
             // [64:192] - g2TauMinusG2z
             // [192:256] - kzg commitment (g1 point)
             // [256:320] - proof (g1 point)
-            // [320:352] - preimage length
+            // [320:352] - preimage length by # of field elements
 
             {
                 uint256[2] memory kzgCommitment = [
@@ -358,6 +358,7 @@ contract OneStepProverHostIo is IOneStepProver {
                 ];
                 uint256 z = uint256(bytes32(kzgProof[0:32]));
                 uint256 y = uint256(bytes32(kzgProof[32:64]));
+                // read length as # of field elements
                 uint32 length_u32 = uint32(uint256(bytes32(kzgProof[320:352])));
 
                 require(kzgCommitment[0] < BN254.FP_MODULUS, "COMMIT_X_LARGER_THAN_FIELD");
@@ -369,6 +370,8 @@ contract OneStepProverHostIo is IOneStepProver {
                 require(z < BN254.FR_MODULUS, "Z_LARGER_THAN_FIELD");
                 require(y < BN254.FR_MODULUS, "Y_LARGER_THAN_FIELD");
 
+                // preimage hash must be recomputable from serialized kzgbn254 proof 
+                // which matches that persisted in agreed upon merkalized machine prestate
                 require(
                     keccak256(abi.encodePacked(kzgProof[192:256], length_u32)) == leafContents,
                     "BN254_KZG_PROOF_WRONG_HASH"
@@ -387,17 +390,17 @@ contract OneStepProverHostIo is IOneStepProver {
                 );
             }
 
-            // read the preimage length
-            uint32 preimage_length = uint32(uint256(bytes32(kzgProof[320:352])));
+            // read length as # of bytes in preimage
+            uint32 preimageLength = uint32(uint256(bytes32(kzgProof[320:352]))) * 32;
 
             // If preimageOffset is greater than or equal to the blob size, leave extracted empty and call it here.
-            if (preimageOffset < preimage_length) {
+            if (preimageOffset < preimageLength) {
                 // preimageOffset was required to be 32 byte aligned above
                 uint256 tmp = preimageOffset / 32;
                 // First, we get the root of unity of order 2**fieldElementsPerBlob.
                 // We start with a root of unity of order 2**32 and then raise it to
                 // the power of (2**32)/fieldElementsPerBlob to get root of unity we need.
-                uint256 rootOfUnityPower = ((1 << 28) / preimage_length) * 32;
+                uint256 rootOfUnityPower = ((1 << 28) / preimageLength) * 32;
                 // Then, we raise the root of unity to the power of bitReversedIndex,
                 // to retrieve this word of the KZG commitment.
                 rootOfUnityPower *= tmp;
@@ -445,6 +448,8 @@ contract OneStepProverHostIo is IOneStepProver {
         }
         bytes32 acc = keccak256(abi.encodePacked(beforeAcc, messageHash, delayedAcc));
         require(acc == execCtx.bridge.sequencerInboxAccs(msgIndex), "BAD_SEQINBOX_MESSAGE");
+
+        // if header == eigenda then call verifyCertV2 here
         return true;
     }
 
