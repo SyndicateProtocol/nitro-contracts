@@ -12,3 +12,5 @@ out/
 .env
 lcov.info
 output_directory
+## Fork diff index
+index.html
