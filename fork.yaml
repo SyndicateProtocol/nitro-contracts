@@ -1,0 +1,111 @@
+title: "layr-labs/nitro-contracts"  # Define the HTML page title
+logo: "logo.png"
+footer: |  # define the footer with markdown
+  [Nitro](https://github.com/Layr-Labs/nitro) fork overview &middot created with [Forkdiff](https://github.com/protolambda/forkdiff)
+base:
+  name: OffchainLabs/nitro-contracts
+  url: https://github.com/OffchainLabs/nitro-contracts
+  hash:  f9cd1aa4b5bba209211e8df9993e0eba89eaedda
+fork:
+  name: Layr-Labs/nitro-contracts
+  url: https://github.com/Layr-Labs/nitro-contracts
+  ref: refs/heads/eigenda-v2.1.3
+def:
+    title: "EigenDA x Arbitrum Nitro Contracts fork diff"
+    description: | # description in markdown
+      The original nitro codebase can be found at [`github.com/OffchainLabs/nitro-contracts`](https://github.com/OffchainLabs/nitro).
+      And the fork at [`github.com/Layr-Labs/nitro-contracts`](https://github.com/Layr-Labs/nitro).
+  
+    sub:
+      - title: "Sequencer Inbox"
+        description: | 
+          Added an `addSequencerL2BatchFromEigenDA` function which process an EigenDA certificate within the inbox. 
+          Certificates can optionally be verified within the inbox by calling `verifyDACertV1` against the `EigenDACertVerifier` [contract](https://github.com/Layr-Labs/eigenda/blob/4198de91e27a62a0f84d300bea067812c9c3ee96/contracts/src/core/EigenDACertVerifier.sol) 
+          to remove a trust assumption on the Arbitrum sequencer. If no `EigenDACertVerifier` address is set then verification
+          is ignored.
+        globs:
+          - "src/bridge/SequencerInbox.sol"
+          - "src/bridge/ISequencerInbox.sol"
+          - "src/bridge/IBridge.sol"
+          - "src/libraries/Error.sol"
+          - "test/foundry/blob_info/blob_info.json"
+          - "test/storage/SequencerInbox"
+          - "test/foundry/SequencerInbox.t.sol"
+          - "src/mocks/SequencerInboxStub.sol"
+
+      - title: Rollup creator
+        description: |
+          Updated rollup creator to:
+          
+          *  support a `freezing` access modifier which permanently pauses contract functionality and prohibits users
+          from deploying subsequent parent chain system contracts. This is done to prevent users from utilizing older rollup creators mapped to 
+          outdated system contracts.
+
+          * handle the `EigenDACertVerifier` contract address as a constructor argument
+        
+        globs:
+          - "src/rollup/RollupCreator.sol"
+          - "test/foundry/RollupCreator.t.sol"
+          - "scripts/rollupCreation.ts"
+          - "scripts/deploymentUtils.ts"
+      
+      - title: One step proving
+        description: |
+          Extended the one step prover HostIO to process a polynomial opening proof for an EigenDA preimage type using the BN254 curve.
+          Since the pairing requires points on BN254's G2 group, which are inaccessible on-chain, we introduce a new value (`gamma`) which is
+          a hash generated off-chain. 
+
+        globs:
+          - "src/osp/OneStepProverHostIo.sol"
+          - "test/foundry/Bn254KZG.t.sol"
+
+
+      - title: "Cert verification"
+        description: |
+          Updated hardhat deployment scripts to take `EigenDACertVerifier` contract as input within deployment contexts
+          used for both testing and real deployments.
+        
+        globs:
+          - "scripts/createEthRollup.ts"
+          - "scripts/createERC20Rollup.ts"
+          - "scripts/deployment.ts"
+          - "test/contract/arbRollup.spec.ts"
+          - "test/e2e/orbitChain.ts"
+          - "scripts/config.ts.example"
+          - scripts/local-deployment/deployCreatorAndCreateRollup.ts
+
+
+      - title: Package management
+        description: |
+          - Updated to latest to solidity (`v8.12.0`) to ensure compatibility with [`@eigenda-utils`](https://www.npmjs.com/package/@eigenda/eigenda-utils) library.
+            Also changed repo NPM package namespace to that of EigenDA.
+
+          - Renamed npm package namespace to use eigenda
+
+        globs: 
+          - "yarn.lock"
+          - "foundry.toml"
+          - "hardhat.config.ts"
+          - "package.json"
+
+      - title: Github Actions
+        description: |
+          Modified github actions to support sufficient E2E coverage.
+        
+        globs:
+          - .github/workflows/**
+
+
+
+ignore:
+  - "test/signatures/**"
+  - "test/storage/**"
+  - "slither.db.json"
+  - "test/foundry/ChallengeManager.t.sol"
+  - "test/foundry/CacheManager.t.sol"
+  - "test/foundry/ERC20Inbox.t.sol"
+  - "test/foundry/ERC20Outbox.t.sol"
+  - "test/foundry/ERC20RollupEventInbox.t.sol"
+  - "test/foundry/RollupEventInbox.t.sol"
+  - "test/foundry/Outbox.t.sol"
+  - "test/foundry/ERC20Bridge.t.sol"
