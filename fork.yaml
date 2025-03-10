@@ -19,7 +19,7 @@ def:
     sub:
       - title: "Sequencer Inbox"
         description: | 
-          Added an `addSequencerL2BatchFromEigenDA` function which process an EigenDA certificate within the inbox. 
+          Added an `addSequencerL2BatchFromEigenDA` function which processes an EigenDA certificate within the inbox. 
           Certificates can optionally be verified within the inbox by calling `verifyDACertV1` against the `EigenDACertVerifier` [contract](https://github.com/Layr-Labs/eigenda/blob/4198de91e27a62a0f84d300bea067812c9c3ee96/contracts/src/core/EigenDACertVerifier.sol) 
           to remove a trust assumption on the Arbitrum sequencer. If no `EigenDACertVerifier` address is set then verification
           is ignored.
@@ -77,7 +77,7 @@ def:
 
       - title: Package management
         description: |
-          - Updated to latest to solidity (`v8.12.0`) to ensure compatibility with [`@eigenda-utils`](https://www.npmjs.com/package/@eigenda/eigenda-utils) library.
+          - Updated to solidity (`v8.12.0`) to ensure compatibility with [`@eigenda-utils`](https://www.npmjs.com/package/@eigenda/eigenda-utils) library.
             Also changed repo NPM package namespace to that of EigenDA.
 
           - Renamed npm package namespace to use eigenda
