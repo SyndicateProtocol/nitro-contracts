@@ -123,15 +123,9 @@ export async function deployUpgradeExecutor(signer: any): Promise<Contract> {
 export async function deployAllContracts(
   signer: any,
   maxDataSize: BigNumber,
-  eigenDACertVerifierAddress: string,
   verify: boolean = true
 ): Promise<Record<string, Contract>> {
   const isOnArb = await _isRunningOnArbitrum(signer)
-
-  const eigenDACertVerifier = IEigenDACertVerifier__factory.connect(
-    eigenDACertVerifierAddress,
-    signer
-  )
 
   const ethBridge = await deployContract('Bridge', signer, [], verify)
   const reader4844 = isOnArb
@@ -285,7 +279,6 @@ export async function deployAllContracts(
     validatorWalletCreator,
     rollupCreator,
     deployHelper,
-    eigenDACertVerifier,
   }
 }
 
