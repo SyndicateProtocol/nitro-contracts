@@ -52,7 +52,6 @@ contract RollupCreator is Ownable {
         _;
     }
 
-
     BridgeCreator public bridgeCreator;
     IOneStepProofEntry public osp;
     IChallengeManager public challengeManagerTemplate;
