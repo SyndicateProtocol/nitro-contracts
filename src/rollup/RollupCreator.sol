@@ -52,6 +52,11 @@ contract RollupCreator is Ownable {
         _;
     }
 
+    modifier onlyOnce() {
+        require(!templatesSet, "Templates already set");
+        _;
+    }
+
     BridgeCreator public bridgeCreator;
     IOneStepProofEntry public osp;
     IChallengeManager public challengeManagerTemplate;
@@ -64,6 +69,7 @@ contract RollupCreator is Ownable {
 
     DeployHelper public l2FactoriesDeployer;
 
+    bool public templatesSet;
     bool public deploymentFrozen;
 
     constructor() Ownable() {}
@@ -81,7 +87,7 @@ contract RollupCreator is Ownable {
         address _validatorUtils,
         address _validatorWalletCreator,
         DeployHelper _l2FactoriesDeployer
-    ) external onlyOwner {
+    ) external onlyOwner onlyOnce {
         bridgeCreator = _bridgeCreator;
         osp = _osp;
         challengeManagerTemplate = _challengeManagerLogic;
@@ -92,6 +98,7 @@ contract RollupCreator is Ownable {
         validatorWalletCreator = _validatorWalletCreator;
         l2FactoriesDeployer = _l2FactoriesDeployer;
 
+        templatesSet = true;
         emit TemplatesUpdated();
     }
 

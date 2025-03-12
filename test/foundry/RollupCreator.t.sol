@@ -463,6 +463,42 @@ contract RollupCreatorTest is Test {
         vm.stopPrank();
     }
 
+    function test_setTemplates_onlyOnce() public {
+        vm.startPrank(deployer);
+
+        BridgeCreator bridgeCreator = new BridgeCreator(ethBasedTemplates, erc20BasedTemplates);
+
+        IUpgradeExecutor upgradeExecutorLogic = new UpgradeExecutorMock();
+
+        (
+            IOneStepProofEntry ospEntry,
+            IChallengeManager challengeManager,
+            IRollupAdmin _rollupAdmin,
+            IRollupUser _rollupUser
+        ) = _prepareRollupDeployment();
+
+        rollupAdmin = _rollupAdmin;
+        rollupUser = _rollupUser;
+
+        ValidatorUtils validatorUtils = new ValidatorUtils();
+        ValidatorWalletCreator validatorWalletCreator = new ValidatorWalletCreator();
+
+        vm.expectRevert("Templates already set");
+        rollupCreator.setTemplates(
+            bridgeCreator,
+            ospEntry,
+            challengeManager,
+            _rollupAdmin,
+            _rollupUser,
+            upgradeExecutorLogic,
+            address(validatorUtils),
+            address(validatorWalletCreator),
+            deployHelper
+        );
+
+        vm.stopPrank();
+    }
+
     function test_upgrade() public {
         vm.startPrank(deployer);
 
