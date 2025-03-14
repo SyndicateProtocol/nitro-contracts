@@ -46,10 +46,10 @@
   dependencies:
     "@jridgewell/trace-mapping" "0.3.9"
 
-"@eigenda/contracts@0.1.0-rc-2":
-  version "0.1.0-rc-2"
-  resolved "https://registry.yarnpkg.com/@eigenda/contracts/-/contracts-0.1.0-rc-2.tgz#e450efb3a84d9a83bebe34681083a11b5b0fcfd5"
-  integrity sha512-LZPew1Yyt0azgjC12qC6juFflINyC3+Y9/gNsHAO4rrlNnRryiOhWQPAHZKdBgGlcYVDxo12c4NP1COep8/McQ==
+"@eigenda/contracts@0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@eigenda/contracts/-/contracts-0.1.0.tgz#0928779bc173a7c0b6db164f1881764df9a81f7a"
+  integrity sha512-HBEt9+PhmYbloO7SxWHmguMpuHE8G/Rh7NeBEVl6g0tqH9qsqYiDVygz0lhus1AC5F79gJnSYEMba518+HHSHg==
   dependencies:
     "@openzeppelin/contracts" "4.7.0"
     "@openzeppelin/contracts-upgradeable" "4.7.0"
