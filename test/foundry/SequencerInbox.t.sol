@@ -145,7 +145,8 @@ contract SequencerInboxTest is Test {
         bytes memory data,
         bool hostChainIsArbitrum,
         bool isUsingFeeToken,
-        uint256 exchangeRate
+        uint256 exchangeRate,
+        bool isUsingEigenDA
     ) internal {
         uint256 delayedMessagesRead = bridge.delayedMessageCount();
         uint256 sequenceNumber = bridge.sequencerMessageCount();
@@ -171,42 +172,101 @@ contract SequencerInboxTest is Test {
             )
         );
 
-        // calculate expected spending report message
-        bytes memory expectedSpendingReportMsg = "";
-        {
-            uint256 expectedReportedExtraGas = 0;
-            if (hostChainIsArbitrum) {
-                // set 0.1 gwei basefee
-                uint256 basefee = 100000000;
-                vm.fee(basefee);
-                // 30 gwei TX L1 fees
-                uint256 l1Fees = 30000000000;
-                vm.mockCall(
-                    address(0x6c),
-                    abi.encodeWithSignature("getCurrentTxL1GasFees()"),
-                    abi.encode(l1Fees)
-                );
-                expectedReportedExtraGas = l1Fees / basefee;
-            }
-
-            uint256 expectedReportedGasPrice = block.basefee;
-            if (isUsingFeeToken && address(seqInbox.feeTokenPricer()) != address(0)) {
-                // calculate the scaled gas price for reporting
-                expectedReportedGasPrice = (expectedReportedGasPrice * exchangeRate) / 1e18;
-            }
-            expectedSpendingReportMsg = abi.encodePacked(
-                block.timestamp,
-                msg.sender,
-                dataHash,
-                sequenceNumber,
-                expectedReportedGasPrice,
-                uint64(expectedReportedExtraGas)
-            );
-        }
-
         bytes32 beforeAcc = bytes32(0);
         bytes32 delayedAcc = bridge.delayedInboxAccs(delayedMessagesRead - 1);
         bytes32 afterAcc = keccak256(abi.encodePacked(beforeAcc, dataHash, delayedAcc));
+
+        if (isUsingEigenDA) {
+            // For EigenDA batches, SequencerBatchDelivered is emitted first
+            vm.expectEmit(true, true, true, true);
+            emit SequencerBatchDelivered(
+                sequenceNumber,
+                beforeAcc,
+                afterAcc,
+                delayedAcc,
+                delayedMessagesRead,
+                timeBounds,
+                IBridge.BatchDataLocation.EigenDA
+            );
+
+            // Split the logic that deals with calculating and emitting the spending report
+            // into a separate function because of stack too deep limits
+            _handleSpendingReport(
+                bridge,
+                seqInbox,
+                hostChainIsArbitrum,
+                isUsingFeeToken,
+                exchangeRate,
+                dataHash,
+                sequenceNumber,
+                delayedMessagesRead
+            );
+        } else {
+            // For regular batches, spending report is emitted first
+            _handleSpendingReport(
+                bridge,
+                seqInbox,
+                hostChainIsArbitrum,
+                isUsingFeeToken,
+                exchangeRate,
+                dataHash,
+                sequenceNumber,
+                delayedMessagesRead
+            );
+
+            vm.expectEmit(true, true, true, true);
+            emit SequencerBatchDelivered(
+                sequenceNumber,
+                beforeAcc,
+                afterAcc,
+                delayedAcc,
+                delayedMessagesRead,
+                timeBounds,
+                IBridge.BatchDataLocation.TxInput
+            );
+        }
+    }
+
+    function _handleSpendingReport(
+        IBridge bridge,
+        SequencerInbox seqInbox,
+        bool hostChainIsArbitrum,
+        bool isUsingFeeToken,
+        uint256 exchangeRate,
+        bytes32 dataHash,
+        uint256 sequenceNumber,
+        uint256 delayedMessagesRead
+    ) internal {
+        uint256 expectedReportedExtraGas = 0;
+        if (hostChainIsArbitrum) {
+            // set 0.1 gwei basefee
+            uint256 basefee = 100000000;
+            vm.fee(basefee);
+            // 30 gwei TX L1 fees
+            uint256 l1Fees = 30000000000;
+            vm.mockCall(
+                address(0x6c),
+                abi.encodeWithSignature("getCurrentTxL1GasFees()"),
+                abi.encode(l1Fees)
+            );
+            expectedReportedExtraGas = l1Fees / basefee;
+        }
+
+        uint256 expectedReportedGasPrice = block.basefee;
+        if (isUsingFeeToken && address(seqInbox.feeTokenPricer()) != address(0)) {
+            // calculate the scaled gas price for reporting
+            expectedReportedGasPrice = (expectedReportedGasPrice * exchangeRate) / 1e18;
+        }
+        bytes memory expectedSpendingReportMsg = abi.encodePacked(
+            block.timestamp,
+            msg.sender,
+            dataHash,
+            sequenceNumber,
+            expectedReportedGasPrice,
+            uint64(expectedReportedExtraGas)
+        );
+
+        bytes32 delayedAcc = bridge.delayedInboxAccs(delayedMessagesRead - 1);
 
         // spending report
         vm.expectEmit(true, true, true, true);
@@ -224,25 +284,13 @@ contract SequencerInboxTest is Test {
         // spending report event in seq inbox
         vm.expectEmit(true, true, true, true);
         emit InboxMessageDelivered(delayedMessagesRead, expectedSpendingReportMsg);
-
-        // sequencer batch delivered
-        vm.expectEmit(true, true, true, true);
-        emit SequencerBatchDelivered(
-            sequenceNumber,
-            beforeAcc,
-            afterAcc,
-            delayedAcc,
-            delayedMessagesRead,
-            timeBounds,
-            !isUsingEigenDA ? IBridge.BatchDataLocation.TxInput : IBridge.BatchDataLocation.EigenDA
-        );
     }
 
     bytes invalidHeaderData =
         hex"ab4567890a4567890a4567890a4567890a4567890a4567890a4567890a4567890a4567890a";
 
     function testAddSequencerL2BatchFromOrigin_InvalidHeader() public {
-        (SequencerInbox seqInbox, Bridge bridge) = deployRollup(false);
+        (SequencerInbox seqInbox, Bridge bridge,) = deployRollup(false, false, bufferConfigDefault);
         address delayedInboxSender = address(140);
         uint8 delayedInboxKind = 3;
         bytes32 messageDataHash = RAND.Bytes32();
@@ -298,7 +346,7 @@ contract SequencerInboxTest is Test {
         // set 60 gwei basefee
         uint256 basefee = 60000000000;
         vm.fee(basefee);
-        expectEvents(bridge, seqInbox, data, false, false, 0);
+        expectEvents(bridge, seqInbox, data, false, false, 0, false);
 
         vm.prank(tx.origin);
         seqInbox.addSequencerL2BatchFromOrigin(
@@ -450,7 +498,7 @@ contract SequencerInboxTest is Test {
         uint256 sequenceNumber = bridge.sequencerMessageCount();
         uint256 delayedMessagesRead = bridge.delayedMessageCount();
 
-        expectEvents(bridge, seqInbox, data, true, false, 0);
+        expectEvents(bridge, seqInbox, data, true, false, 0, false);
 
         vm.prank(tx.origin);
         seqInbox.addSequencerL2BatchFromOrigin(
@@ -481,7 +529,7 @@ contract SequencerInboxTest is Test {
         uint256 basefee = 40000000000;
         vm.fee(basefee);
 
-        expectEvents(IBridge(address(bridge)), seqInbox, data, true, true, 1e18);
+        expectEvents(IBridge(address(bridge)), seqInbox, data, true, true, 1e18, false);
 
         address feeTokenPricer = address(seqInbox.feeTokenPricer());
         vm.mockCall(
@@ -602,7 +650,7 @@ contract SequencerInboxTest is Test {
     }
 
     function testAddSequencerL2BatchFromEigenDARevertsWhenVerifyCallGeneratesFailure() public {
-        (SequencerInbox seqInbox, Bridge bridge) = deployRollup(false);
+        (SequencerInbox seqInbox, Bridge bridge,) = deployRollup(false, false, bufferConfigDefault);
 
         vm.startPrank(rollupOwner);
         // inject a not null address to ensure reversion occurs
@@ -646,7 +694,7 @@ contract SequencerInboxTest is Test {
     }
 
     function testAddSequencerL2BatchFromEigenDARevertsWhenCertificateIsExpired() public {
-        (SequencerInbox seqInbox, Bridge bridge) = deployRollup(false);
+        (SequencerInbox seqInbox, Bridge bridge,) = deployRollup(false, false, bufferConfigDefault);
 
         vm.startPrank(rollupOwner);
         // inject a not null address to ensure reversion occurs
@@ -694,7 +742,7 @@ contract SequencerInboxTest is Test {
     }
 
     function testAddSequencerL2BatchFromEigenDA_PassesWhenNoCertVerifierIsProvided() public {
-        (SequencerInbox seqInbox, Bridge bridge) = deployRollup(false);
+        (SequencerInbox seqInbox, Bridge bridge,) = deployRollup(false, false, bufferConfigDefault);
 
         vm.startPrank(rollupOwner);
         // inject a null address to ensure verification is stubbed or forced to pass
@@ -723,7 +771,7 @@ contract SequencerInboxTest is Test {
         uint256 sequenceNumber = bridge.sequencerMessageCount();
         uint256 delayedMessagesRead = bridge.delayedMessageCount();
 
-        expectEvents(bridge, seqInbox, data, false, false, true);
+        expectEvents(bridge, seqInbox, data, false, false, 0, true);
 
         vm.prank(tx.origin);
         seqInbox.addSequencerL2BatchFromEigenDA(
@@ -777,7 +825,7 @@ contract SequencerInboxTest is Test {
         if (expectedToOverflow) {
             vm.expectRevert(stdError.arithmeticError);
         } else {
-            expectEvents(IBridge(address(bridge)), seqInbox, data, true, true, exchangeRate);
+            expectEvents(IBridge(address(bridge)), seqInbox, data, true, true, exchangeRate, false);
         }
         vm.prank(tx.origin);
         seqInbox.addSequencerL2BatchFromOrigin(
@@ -1028,9 +1076,8 @@ contract SequencerInboxTest is Test {
         });
 
         blobHeader.commitment = commitment;
-        blobHeader.dataLength = uint32(
-            uint256(vm.parseJsonInt(json, ".blob_info.blob_header.data_length"))
-        );
+        blobHeader.dataLength =
+            uint32(uint256(vm.parseJsonInt(json, ".blob_info.blob_header.data_length")));
 
         //bytes memory quorumParamsBytes = vm.parseJson(json, ".blob_info.blob_header.blob_quorum_params");
 
