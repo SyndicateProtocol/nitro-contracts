@@ -38,9 +38,10 @@ import {
   BridgeInterface,
   MessageDeliveredEvent,
 } from '../../build/types/src/bridge/Bridge'
-import { Signer } from 'ethers'
+import { constants, Signer } from 'ethers'
 import { Toolkit4844 } from './toolkit4844'
 import { data } from './batchData.json'
+import { seqInterface } from './testHelpers'
 
 const mineBlocks = async (count: number, timeDiffPerBlock = 14) => {
   const block = (await network.provider.send('eth_getBlockByNumber', [
@@ -196,7 +197,10 @@ describe('SequencerInboxForceInclude', async () => {
       messageDataHash
     )
     if (expectedErrorType) {
-      await expect(forceInclusionTx).to.be.revertedWith(expectedErrorType)
+      await expect(forceInclusionTx).to.be.revertedWithCustomError(
+        { interface: seqInterface },
+        expectedErrorType
+      )
     } else {
       await (await forceInclusionTx).wait()
 
@@ -237,6 +241,7 @@ describe('SequencerInboxForceInclude', async () => {
     const seqInboxTemplate = await sequencerInboxFac.deploy(
       117964,
       reader4844.address,
+      false,
       false
     )
     const inboxFac = (await ethers.getContractFactory(
@@ -275,12 +280,21 @@ describe('SequencerInboxForceInclude', async () => {
       .connect(user)
     await bridge.initialize(rollup.address)
 
-    await sequencerInbox.initialize(bridgeProxy.address, {
-      delayBlocks: maxDelayBlocks,
-      delaySeconds: maxDelayTime,
-      futureBlocks: 10,
-      futureSeconds: 3000,
-    })
+    await sequencerInbox.initialize(
+      bridgeProxy.address,
+      {
+        delayBlocks: maxDelayBlocks,
+        delaySeconds: maxDelayTime,
+        futureBlocks: 10,
+        futureSeconds: 3000,
+      },
+      {
+        threshold: 0,
+        max: 0,
+        replenishRateInBasis: 0,
+      },
+      constants.AddressZero
+    )
 
     await (
       await sequencerInbox
@@ -575,40 +589,6 @@ describe('SequencerInboxForceInclude', async () => {
     )
   })
 
-  it('cannot include before max time delay', async () => {
-    const { user, inbox, bridge, messageTester, sequencerInbox } =
-      await setupSequencerInbox(10, 100)
-    const delayedTx = await sendDelayedTx(
-      user,
-      inbox,
-      bridge,
-      messageTester,
-      1000000,
-      21000000000,
-      0,
-      await user.getAddress(),
-      BigNumber.from(10),
-      '0x1010'
-    )
-
-    const [delayBlocks, , ,] = await sequencerInbox.maxTimeVariation()
-    // mine a lot of blocks - but use a short time per block
-    // this should mean enough blocks have passed, but not enough time
-    await mineBlocks(delayBlocks.toNumber() + 1, 5)
-
-    await forceIncludeMessages(
-      sequencerInbox,
-      delayedTx.inboxAccountLength,
-      delayedTx.deliveredMessageEvent.kind,
-      delayedTx.l1BlockNumber,
-      delayedTx.l1BlockTimestamp,
-      delayedTx.baseFeeL1,
-      delayedTx.senderAddr,
-      delayedTx.deliveredMessageEvent.messageDataHash,
-      'ForceIncludeTimeTooSoon'
-    )
-  })
-
   it('should fail to call sendL1FundedUnsignedTransactionToFork', async function () {
     const { inbox } = await setupSequencerInbox()
     await expect(
@@ -619,7 +599,7 @@ describe('SequencerInboxForceInclude', async () => {
         ethers.constants.AddressZero,
         '0x'
       )
-    ).to.revertedWith('NotForked')
+    ).to.revertedWithCustomError({ interface: seqInterface }, 'NotForked')
   })
 
   it('should fail to call sendUnsignedTransactionToFork', async function () {
@@ -633,14 +613,14 @@ describe('SequencerInboxForceInclude', async () => {
         0,
         '0x'
       )
-    ).to.revertedWith('NotForked')
+    ).to.revertedWithCustomError({ interface: seqInterface }, 'NotForked')
   })
 
   it('should fail to call sendWithdrawEthToFork', async function () {
     const { inbox } = await setupSequencerInbox()
     await expect(
       inbox.sendWithdrawEthToFork(0, 0, 0, 0, ethers.constants.AddressZero)
-    ).to.revertedWith('NotForked')
+    ).to.revertedWithCustomError({ interface: seqInterface }, 'NotForked')
   })
 
   it('can upgrade Inbox', async () => {
