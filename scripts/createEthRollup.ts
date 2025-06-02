@@ -4,10 +4,16 @@ import { createRollup } from './rollupCreation'
 
 async function main() {
   const feeToken = ethers.constants.AddressZero
+  const feeTokenPricer = ethers.constants.AddressZero
   const eigenDACertVerifierAddress = ethers.constants.AddressZero
   const rollupCreatorAddress = process.env.ROLLUP_CREATOR_ADDRESS
   if (!rollupCreatorAddress) {
     throw new Error('ROLLUP_CREATOR_ADDRESS not set')
+  }
+
+  const stakeTokenAddress = process.env.STAKE_TOKEN_ADDRESS
+  if (!stakeTokenAddress) {
+    throw new Error('STAKE_TOKEN_ADDRESS not set')
   }
 
   const [signer] = await ethers.getSigners()
@@ -17,6 +23,8 @@ async function main() {
     false,
     rollupCreatorAddress,
     feeToken,
+    feeTokenPricer,
+    stakeTokenAddress,
     eigenDACertVerifierAddress
   )
 }

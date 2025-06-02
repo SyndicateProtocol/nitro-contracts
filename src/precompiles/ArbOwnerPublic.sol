@@ -8,14 +8,18 @@ pragma solidity >=0.4.21 <0.9.0;
 /// @notice Precompiled contract that exists in every Arbitrum chain at 0x000000000000000000000000000000000000006b.
 interface ArbOwnerPublic {
     /// @notice See if the user is a chain owner
-    function isChainOwner(address addr) external view returns (bool);
+    function isChainOwner(
+        address addr
+    ) external view returns (bool);
 
     /**
      * @notice Rectify the list of chain owners
      * If successful, emits ChainOwnerRectified event
      * Available in ArbOS version 11
      */
-    function rectifyChainOwner(address ownerToRectify) external;
+    function rectifyChainOwner(
+        address ownerToRectify
+    ) external;
 
     /// @notice Retrieves the list of chain owners
     function getAllChainOwners() external view returns (address[] memory);
@@ -36,6 +40,12 @@ interface ArbOwnerPublic {
         external
         view
         returns (uint64 arbosVersion, uint64 scheduledForTimestamp);
+
+    /**
+     * @notice Checks if the increased calldata price feature (EIP-7623) is enabled
+     * Available in ArbOS version 40 with default as false
+     */
+    function isCalldataPriceIncreaseEnabled() external view returns (bool);
 
     event ChainOwnerRectified(address rectifiedOwner);
 }

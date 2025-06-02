@@ -14,7 +14,7 @@ jobs:
     name: Test unit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -22,6 +22,7 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
+          cache: false
 
       - name: Setup node/yarn
         uses: actions/setup-node@v3
@@ -34,7 +35,7 @@ jobs:
         run: yarn
 
       - name: Build
-        run: forge test
+        run: yarn test:foundry
   tests:
     name: Contract tests
     runs-on: ubuntu-latest
@@ -43,7 +44,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -51,9 +52,10 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
+          cache: false
 
       - name: Setup nodejs
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
           cache: 'yarn'
@@ -63,6 +65,10 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
+          cache: false
+
+      - name: Check Contracts Format
+        run: forge fmt --check
 
       - name: Install dependencies
         run: yarn install
@@ -118,7 +124,7 @@ jobs:
     name: 4844 tests
     runs-on: linux-2xl
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -126,66 +132,66 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
+          cache: false
 
-  #     - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@main
-  #       with:
-  #         args: --pos
-  #         no-token-bridge: true
+      - uses: OffchainLabs/actions/run-nitro-test-node@main
+        with:
+          args: --pos
+          no-token-bridge: true
 
-  #     - name: Setup nodejs
-  #       uses: actions/setup-node@v2
-  #       with:
-  #         node-version: 18
-  #         cache: 'yarn'
-  #         cache-dependency-path: '**/yarn.lock'
+      - name: Setup nodejs
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'yarn'
+          cache-dependency-path: '**/yarn.lock'
 
-  #     - name: Install dependencies
-  #       run: yarn install
+      - name: Install dependencies
+        run: yarn install
 
-  #     - name: Build
-  #       run: yarn build:all
+      - name: Build
+        run: yarn build:all
 
-  #     - name: Test 4844
-  #       run: yarn test:4844
-  
-  # NOTE: OCL disables theses tests by default, not worth fixing until
-  # they are supported upstream
-  # SEE for ref: https://github.com/OffchainLabs/nitro-contracts/blob/94999b3e2d3b4b7f8e771cc458b9eb229620dd8f/.github/workflows/contract-tests.yml#L153-L247
-  # test-e2e:
-  #   name: Test e2e
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         submodules: recursive
+      - name: Test 4844
+        run: yarn test:4844
 
-  #     - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@main
-  #       with:
-  #         l3-node: true
-  #         no-token-bridge: true
-  #         no-l3-token-bridge: true
-  #         nitro-contracts-branch: '${{ github.event.pull_request.head.sha || github.sha }}'
+  test-e2e:
+    name: Test e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-  #     - name: Setup node/yarn
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version: 18
-  #         cache: 'yarn'
-  #         cache-dependency-path: '**/yarn.lock'
+      - uses: OffchainLabs/actions/run-nitro-test-node@main
+        with:
+          l3-node: true
+          no-token-bridge: true
+          no-l3-token-bridge: true
+          nitro-contracts-branch: '${{ github.event.pull_request.head.sha || github.sha }}'
+          nitro-testnode-ref: v3-support
 
-  #     - name: Install packages
-  #       run: yarn
+      - name: Setup node/yarn
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'yarn'
+          cache-dependency-path: '**/yarn.lock'
 
-  #     - name: Compile contracts
-  #       run: yarn build
+      - name: Install packages
+        run: yarn
 
-  #     - name: Run e2e tests
-  #       run: yarn test:e2e
+      - name: Compile contracts
+        run: yarn build
+
+      - name: Run e2e tests
+        run: yarn test:e2e
+
   test-e2e-custom-fee-token-eigenda:
     name: Test e2e custom fee token
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -196,6 +202,40 @@ jobs:
           no-token-bridge: true
           no-l3-token-bridge: true
           eigenda: true
+          nitro-contracts-branch: '${{ github.event.pull_request.head.sha || github.sha }}'
+          nitro-testnode-ref: v3-support
+
+      - name: Setup node/yarn
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'yarn'
+          cache-dependency-path: '**/yarn.lock'
+
+      - name: Install packages
+        run: yarn
+
+      - name: Compile contracts
+        run: yarn build
+
+      - name: Run e2e tests
+        run: yarn test:e2e
+
+  test-e2e-fee-token-6-decimals:
+    name: Test e2e fee token with 6 decimals and pricer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: OffchainLabs/actions/run-nitro-test-node@main
+        with:
+          l3-node: true
+          args: --l3-fee-token --l3-fee-token-pricer --l3-fee-token-decimals 6
+          no-token-bridge: true
+          no-l3-token-bridge: true
+          nitro-testnode-ref: v3-support
           nitro-contracts-branch: '${{ github.event.pull_request.head.sha || github.sha }}'
 
       - name: Setup node/yarn
@@ -213,34 +253,37 @@ jobs:
 
       - name: Run e2e tests
         run: yarn test:e2e
-      # test-e2e-fee-token-6-decimals:
-      #   name: Test e2e fee token with 6 decimals
-      #   runs-on: ubuntu-latest
-      #   steps:
-      #     - uses: actions/checkout@v3
-      #       with:
-      #         submodules: recursive
 
-      #     - uses: Layr-Labs/arbitrum-actions/run-nitro-test-node@main
-      #       with:
-      #         l3-node: true
-      #         args: --l3-fee-token --l3-fee-token-decimals 6
-      #         no-token-bridge: true
-      #         no-l3-token-bridge: true
-      #         nitro-contracts-branch: '${{ github.event.pull_request.head.sha || github.sha }}'
+  # bold-upgrade:
+  #   name: BOLD upgrade test
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
 
-      # - name: Setup node/yarn
-      #   uses: actions/setup-node@v3
-      #   with:
-      #     node-version: 18
-      #     cache: 'yarn'
-      #     cache-dependency-path: '**/yarn.lock'
+  #     - name: Install Foundry
+  #       uses: foundry-rs/foundry-toolchain@v1
+  #       with:
+  #         version: stable
+  #         cache: false
 
-      # - name: Install packages
-      #   run: yarn
+  #     - name: Setup node/yarn
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 18
+  #         cache: 'yarn'
+  #         cache-dependency-path: '**/yarn.lock'
 
-      # - name: Compile contracts
-      #   run: yarn build
+  #     - name: Install packages
+  #       run: yarn
 
-      # - name: Run e2e tests
-      #   run: yarn test:e2e
+  #     - name: Compile contracts
+  #       run: yarn build:all
+
+  #     - name: Copy .env
+  #       run: |
+  #         cp ./.env-sample ./.env
+
+  #     - name: Test upgrade
+  #       run: L1_RPC=${{ secrets.L1_RPC || 'https://rpc.ankr.com/eth' }} yarn test:upgrade

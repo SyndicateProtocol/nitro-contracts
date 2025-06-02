@@ -6,9 +6,8 @@ import "./util/TestUtil.sol";
 import "../../src/rollup/RollupCreator.sol";
 import "../../src/rollup/RollupAdminLogic.sol";
 import "../../src/rollup/RollupUserLogic.sol";
-import "../../src/rollup/ValidatorUtils.sol";
 import "../../src/rollup/ValidatorWalletCreator.sol";
-import "../../src/challenge/ChallengeManager.sol";
+import "../../src/challengeV2/EdgeChallengeManager.sol";
 import "../../src/osp/OneStepProver0.sol";
 import "../../src/osp/OneStepProverMemory.sol";
 import "../../src/osp/OneStepProverMath.sol";
@@ -16,9 +15,11 @@ import "../../src/osp/OneStepProverHostIo.sol";
 import "../../src/osp/OneStepProofEntry.sol";
 import "../../src/mocks/UpgradeExecutorMock.sol";
 import "../../src/rollup/DeployHelper.sol";
+import "../../src/mocks/TestWETH9.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
+import {NoZeroTransferToken} from "./util/NoZeroTransferToken.sol";
 
 contract RollupCreatorTest is Test {
     RollupCreator public rollupCreator;
@@ -28,27 +29,28 @@ contract RollupCreatorTest is Test {
     IRollupUser public rollupUser;
     DeployHelper public deployHelper;
     IReader4844 dummyReader4844 = IReader4844(address(137));
+    IERC20 token;
 
     // 1 gwei
     uint256 public constant MAX_FEE_PER_GAS = 1_000_000_000;
     uint256 public constant MAX_DATA_SIZE = 117_964;
 
-    BridgeCreator.BridgeContracts public ethBasedTemplates =
-        BridgeCreator.BridgeContracts({
-            bridge: new Bridge(),
-            sequencerInbox: new SequencerInbox(MAX_DATA_SIZE, dummyReader4844, false),
-            inbox: new Inbox(MAX_DATA_SIZE),
-            rollupEventInbox: new RollupEventInbox(),
-            outbox: new Outbox()
-        });
-    BridgeCreator.BridgeContracts public erc20BasedTemplates =
-        BridgeCreator.BridgeContracts({
-            bridge: new ERC20Bridge(),
-            sequencerInbox: new SequencerInbox(MAX_DATA_SIZE, dummyReader4844, true),
-            inbox: new ERC20Inbox(MAX_DATA_SIZE),
-            rollupEventInbox: new ERC20RollupEventInbox(),
-            outbox: new ERC20Outbox()
-        });
+    BridgeCreator.BridgeTemplates public ethBasedTemplates = BridgeCreator.BridgeTemplates({
+        bridge: new Bridge(),
+        sequencerInbox: new SequencerInbox(MAX_DATA_SIZE, dummyReader4844, false, false),
+        delayBufferableSequencerInbox: new SequencerInbox(MAX_DATA_SIZE, dummyReader4844, false, true),
+        inbox: new Inbox(MAX_DATA_SIZE),
+        rollupEventInbox: new RollupEventInbox(),
+        outbox: new Outbox()
+    });
+    BridgeCreator.BridgeTemplates public erc20BasedTemplates = BridgeCreator.BridgeTemplates({
+        bridge: new ERC20Bridge(),
+        sequencerInbox: new SequencerInbox(MAX_DATA_SIZE, dummyReader4844, true, false),
+        delayBufferableSequencerInbox: new SequencerInbox(MAX_DATA_SIZE, dummyReader4844, true, true),
+        inbox: new ERC20Inbox(MAX_DATA_SIZE),
+        rollupEventInbox: new ERC20RollupEventInbox(),
+        outbox: new ERC20Outbox()
+    });
 
     /* solhint-disable func-name-mixedcase */
     function setUp() public {
@@ -64,7 +66,7 @@ contract RollupCreatorTest is Test {
 
         (
             IOneStepProofEntry ospEntry,
-            IChallengeManager challengeManager,
+            IEdgeChallengeManager challengeManager,
             IRollupAdmin _rollupAdmin,
             IRollupUser _rollupUser
         ) = _prepareRollupDeployment();
@@ -80,10 +82,13 @@ contract RollupCreatorTest is Test {
             _rollupAdmin,
             _rollupUser,
             upgradeExecutorLogic,
-            address(new ValidatorUtils()),
             address(new ValidatorWalletCreator()),
             deployHelper
         );
+
+        token = new TestWETH9("Test", "TEST");
+        vm.deal(deployer, 10 ether);
+        IWETH9(address(token)).deposit{value: 10 ether}();
 
         vm.stopPrank();
     }
@@ -92,24 +97,39 @@ contract RollupCreatorTest is Test {
         vm.startPrank(deployer);
 
         // deployment params
-        ISequencerInbox.MaxTimeVariation memory timeVars = ISequencerInbox.MaxTimeVariation(
-            ((60 * 60 * 24) / 15),
-            12,
-            60 * 60 * 24,
-            60 * 60
+        ISequencerInbox.MaxTimeVariation memory timeVars =
+            ISequencerInbox.MaxTimeVariation(((60 * 60 * 24) / 15), 12, 60 * 60 * 24, 60 * 60);
+        uint256[] memory miniStakeValues = new uint256[](3);
+        miniStakeValues[0] = 1 ether;
+        miniStakeValues[1] = 2 ether;
+        miniStakeValues[2] = 3 ether;
+        AssertionState memory emptyState = AssertionState(
+            GlobalState([bytes32(0), bytes32(0)], [uint64(0), uint64(0)]),
+            MachineStatus.FINISHED,
+            bytes32(0)
         );
         Config memory config = Config({
-            confirmPeriodBlocks: 20,
-            extraChallengeTimeBlocks: 200,
-            stakeToken: address(0),
             baseStake: 1000,
-            wasmModuleRoot: keccak256("wasm"),
-            owner: rollupOwner,
-            loserStakeEscrow: address(200),
             chainId: 1337,
             chainConfig: "abc",
-            genesisBlockNum: 15_000_000,
-            sequencerInboxMaxTimeVariation: timeVars
+            minimumAssertionPeriod: 75,
+            validatorAfkBlocks: 1234,
+            confirmPeriodBlocks: 567,
+            owner: rollupOwner,
+            sequencerInboxMaxTimeVariation: timeVars,
+            stakeToken: address(token),
+            wasmModuleRoot: keccak256("wasm"),
+            loserStakeEscrow: address(200),
+            genesisAssertionState: emptyState,
+            genesisInboxCount: 0,
+            miniStakeValues: miniStakeValues,
+            layerZeroBlockEdgeHeight: 2 ** 5,
+            layerZeroBigStepEdgeHeight: 2 ** 5,
+            layerZeroSmallStepEdgeHeight: 2 ** 5,
+            anyTrustFastConfirmer: address(0),
+            numBigStepLevel: 1,
+            challengeGracePeriodBlocks: 10,
+            bufferConfig: BufferConfig({threshold: 600, max: 14400, replenishRateInBasis: 500})
         });
 
         // prepare funds
@@ -129,20 +149,19 @@ contract RollupCreatorTest is Test {
 
         RollupCreator.RollupDeploymentParams memory deployParams = RollupCreator
             .RollupDeploymentParams({
-                config: config,
-                batchPosters: batchPosters,
-                validators: validators,
-                maxDataSize: MAX_DATA_SIZE,
-                nativeToken: address(0),
-                deployFactoriesToL2: true,
-                maxFeePerGasForRetryables: MAX_FEE_PER_GAS,
-                batchPosterManager: batchPosterManager,
-                eigenDACertVerifier: eigenDACertVerifier
-            });
-
-        address rollupAddress = rollupCreator.createRollup{value: factoryDeploymentFunds}(
-            deployParams
-        );
+            config: config,
+            batchPosters: batchPosters,
+            validators: validators,
+            maxDataSize: MAX_DATA_SIZE,
+            nativeToken: address(0),
+            deployFactoriesToL2: true,
+            maxFeePerGasForRetryables: MAX_FEE_PER_GAS,
+            batchPosterManager: batchPosterManager,
+            feeTokenPricer: IFeeTokenPricer(address(0)),
+            eigenDACertVerifier: eigenDACertVerifier
+        });
+        address rollupAddress =
+            rollupCreator.createRollup{value: factoryDeploymentFunds}(deployParams);
 
         vm.stopPrank();
 
@@ -170,6 +189,12 @@ contract RollupCreatorTest is Test {
             rollup.sequencerInbox().batchPosterManager(),
             batchPosterManager,
             "Invalid batch poster manager"
+        );
+        assertEq(
+            rollup.validatorAfkBlocks(), config.validatorAfkBlocks, "Invalid validatorAfkBlocks"
+        );
+        assertEq(
+            rollup.confirmPeriodBlocks(), config.confirmPeriodBlocks, "Invalid confirmPeriodBlocks"
         );
 
         // check proxy admin for non-rollup contracts
@@ -216,9 +241,7 @@ contract RollupCreatorTest is Test {
 
         // upgrade executor owns rollup
         assertEq(
-            IOwnable(rollupAddress).owner(),
-            upgradeExecutorExpectedAddress,
-            "Invalid rollup owner"
+            IOwnable(rollupAddress).owner(), upgradeExecutorExpectedAddress, "Invalid rollup owner"
         );
         assertEq(
             _getProxyAdmin(rollupAddress),
@@ -227,57 +250,95 @@ contract RollupCreatorTest is Test {
         );
 
         // check rollupOwner has executor role
-        AccessControlUpgradeable executor = AccessControlUpgradeable(
-            upgradeExecutorExpectedAddress
-        );
+        AccessControlUpgradeable executor = AccessControlUpgradeable(upgradeExecutorExpectedAddress);
         assertTrue(
-            executor.hasRole(keccak256("EXECUTOR_ROLE"), rollupOwner),
-            "Invalid executor role"
+            executor.hasRole(keccak256("EXECUTOR_ROLE"), rollupOwner), "Invalid executor role"
         );
 
         // check funds are refunded
         uint256 balanceAfter = deployer.balance;
-        uint256 factoryDeploymentCost = deployHelper.getDeploymentTotalCost(
-            rollup.inbox(),
-            MAX_FEE_PER_GAS
-        );
+        uint256 factoryDeploymentCost =
+            deployHelper.getDeploymentTotalCost(rollup.inbox(), MAX_FEE_PER_GAS);
         assertEq(balanceBefore - balanceAfter, factoryDeploymentCost, "Invalid balance");
     }
 
     function test_createErc20Rollup() public {
-        vm.startPrank(deployer);
-        address nativeToken = address(
-            new ERC20PresetFixedSupply("Appchain Token", "App", 1_000_000 ether, deployer)
-        );
+        address nativeToken =
+            address(new ERC20PresetFixedSupply("Appchain Token", "App", 1_000_000 ether, deployer));
 
-        // deployment params
-        ISequencerInbox.MaxTimeVariation memory timeVars = ISequencerInbox.MaxTimeVariation(
-            ((60 * 60 * 24) / 15),
-            12,
-            60 * 60 * 24,
-            60 * 60
+        _createERC20Rollup(nativeToken);
+    }
+
+    function test_createErc20RollupNoZeroTransfer() public {
+        address nativeToken =
+            address(new NoZeroTransferToken("Appchain Token", "App", 1_000_000 ether, deployer));
+
+        _createERC20Rollup(nativeToken);
+    }
+
+    function _createERC20Rollup(
+        address nativeToken
+    ) internal {
+        vm.startPrank(deployer);
+
+        Config memory config = _createRollupConfig();
+        _approveTokenForDeployment(nativeToken);
+        address rollupAddress = _deployERC20Rollup(nativeToken, config);
+
+        vm.stopPrank();
+
+        // Check deployment results in separate function to avoid stack too deep
+        _verifyERC20RollupDeployment(config, rollupAddress, nativeToken);
+    }
+
+    function _createRollupConfig() internal view returns (Config memory) {
+        ISequencerInbox.MaxTimeVariation memory timeVars =
+            ISequencerInbox.MaxTimeVariation(((60 * 60 * 24) / 15), 12, 60 * 60 * 24, 60 * 60);
+        uint256[] memory miniStakeValues = new uint256[](3);
+        miniStakeValues[0] = 1 ether;
+        miniStakeValues[1] = 2 ether;
+        miniStakeValues[2] = 3 ether;
+        AssertionState memory emptyState = AssertionState(
+            GlobalState([bytes32(0), bytes32(0)], [uint64(0), uint64(0)]),
+            MachineStatus.FINISHED,
+            bytes32(0)
         );
-        Config memory config = Config({
-            confirmPeriodBlocks: 20,
-            extraChallengeTimeBlocks: 200,
-            stakeToken: address(0),
+        return Config({
             baseStake: 1000,
-            wasmModuleRoot: keccak256("wasm"),
-            owner: rollupOwner,
-            loserStakeEscrow: address(200),
             chainId: 1337,
             chainConfig: "abc",
-            genesisBlockNum: 15_000_000,
-            sequencerInboxMaxTimeVariation: timeVars
+            minimumAssertionPeriod: 75,
+            validatorAfkBlocks: 1234,
+            confirmPeriodBlocks: 567,
+            owner: rollupOwner,
+            sequencerInboxMaxTimeVariation: timeVars,
+            stakeToken: address(token),
+            wasmModuleRoot: keccak256("wasm"),
+            loserStakeEscrow: address(200),
+            genesisAssertionState: emptyState,
+            genesisInboxCount: 0,
+            miniStakeValues: miniStakeValues,
+            layerZeroBlockEdgeHeight: 2 ** 5,
+            layerZeroBigStepEdgeHeight: 2 ** 5,
+            layerZeroSmallStepEdgeHeight: 2 ** 5,
+            anyTrustFastConfirmer: address(0),
+            numBigStepLevel: 1,
+            challengeGracePeriodBlocks: 10,
+            bufferConfig: BufferConfig({threshold: 600, max: 14400, replenishRateInBasis: 500})
         });
+    }
 
-        // approve fee token to pay for deployment of L2 factories
-        uint256 expectedCost = 0.1247 ether +
-            4 *
-            (1400 * 100_000_000_000 + 100_000 * 1_000_000_000);
+    function _approveTokenForDeployment(
+        address nativeToken
+    ) internal {
+        uint256 expectedCost = 0.1247 ether + 4 * (1400 * 100_000_000_000 + 100_000 * 1_000_000_000);
         IERC20(nativeToken).approve(address(rollupCreator), expectedCost);
+    }
 
-        /// deploy rollup
+    function _deployERC20Rollup(
+        address nativeToken,
+        Config memory config
+    ) internal returns (address) {
         address[] memory batchPosters = new address[](1);
         batchPosters[0] = makeAddr("batch poster 1");
         address batchPosterManager = makeAddr("batch poster manager");
@@ -286,25 +347,68 @@ contract RollupCreatorTest is Test {
         validators[1] = makeAddr("validator2");
         address eigenDACertVerifier = makeAddr("eigenDACertVerifier");
 
+        IFeeTokenPricer feeTokenPricer = IFeeTokenPricer(makeAddr("feeTokenPricer"));
         RollupCreator.RollupDeploymentParams memory deployParams = RollupCreator
             .RollupDeploymentParams({
-                config: config,
-                batchPosters: batchPosters,
-                validators: validators,
-                maxDataSize: MAX_DATA_SIZE,
-                nativeToken: nativeToken,
-                deployFactoriesToL2: true,
-                maxFeePerGasForRetryables: MAX_FEE_PER_GAS,
-                batchPosterManager: batchPosterManager,
-                eigenDACertVerifier: eigenDACertVerifier
-            });
+            config: config,
+            batchPosters: batchPosters,
+            validators: validators,
+            maxDataSize: MAX_DATA_SIZE,
+            nativeToken: nativeToken,
+            deployFactoriesToL2: true,
+            maxFeePerGasForRetryables: MAX_FEE_PER_GAS,
+            batchPosterManager: batchPosterManager,
+            feeTokenPricer: feeTokenPricer,
+            eigenDACertVerifier: eigenDACertVerifier
+        });
 
-        address rollupAddress = rollupCreator.createRollup(deployParams);
+        vm.mockCall(
+            address(feeTokenPricer),
+            abi.encodeWithSelector(IFeeTokenPricer.getExchangeRate.selector),
+            abi.encode(uint256(16.421e18))
+        );
 
-        vm.stopPrank();
+        return rollupCreator.createRollup(deployParams);
+    }
 
-        /// common checks
+    function _verifyERC20RollupDeployment(
+        Config memory config,
+        address rollupAddress,
+        address nativeToken
+    ) internal {
+        address[] memory batchPosters = new address[](1);
+        batchPosters[0] = makeAddr("batch poster 1");
+        address batchPosterManager = makeAddr("batch poster manager");
+        address[] memory validators = new address[](2);
+        validators[0] = makeAddr("validator1");
+        validators[1] = makeAddr("validator2");
 
+        _postCreateERC20RollupChecks(
+            config, rollupAddress, batchPosterManager, nativeToken, validators, batchPosters
+        );
+    }
+
+    function _postCreateERC20RollupChecks(
+        Config memory config,
+        address rollupAddress,
+        address batchPosterManager,
+        address nativeToken,
+        address[] memory validators,
+        address[] memory batchPosters
+    ) internal {
+        // Split the logic into separate functions to avoid stack too deep limits
+        _checkBasicRollupSetup(rollupAddress, validators, batchPosters, batchPosterManager, config);
+        _checkNativeTokenAndProxyAdmin(rollupAddress, nativeToken);
+        _checkUpgradeExecutorSetup(rollupAddress);
+    }
+
+    function _checkBasicRollupSetup(
+        address rollupAddress,
+        address[] memory validators,
+        address[] memory batchPosters,
+        address batchPosterManager,
+        Config memory config
+    ) internal {
         /// rollup creator
         assertEq(IOwnable(address(rollupCreator)).owner(), deployer, "Invalid rollupCreator owner");
 
@@ -331,13 +435,21 @@ contract RollupCreatorTest is Test {
             batchPosterManager,
             "Invalid batch poster manager"
         );
+        assertEq(
+            rollup.validatorAfkBlocks(), config.validatorAfkBlocks, "Invalid validatorAfkBlocks"
+        );
+        assertEq(
+            rollup.confirmPeriodBlocks(), config.confirmPeriodBlocks, "Invalid confirmPeriodBlocks"
+        );
+    }
+
+    function _checkNativeTokenAndProxyAdmin(address rollupAddress, address nativeToken) internal {
+        RollupCore rollup = RollupCore(rollupAddress);
 
         // native token check
-        IBridge bridge = RollupCore(address(rollupAddress)).bridge();
+        IBridge bridge = rollup.bridge();
         assertEq(
-            IERC20Bridge(address(bridge)).nativeToken(),
-            nativeToken,
-            "Invalid native token ref"
+            IERC20Bridge(address(bridge)).nativeToken(), nativeToken, "Invalid native token ref"
         );
 
         // check proxy admin for non-rollup contracts
@@ -373,6 +485,12 @@ contract RollupCreatorTest is Test {
             proxyAdminExpectedAddress,
             "Invalid challengeManager's proxyAdmin owner"
         );
+    }
+
+    function _checkUpgradeExecutorSetup(
+        address rollupAddress
+    ) internal {
+        RollupCore rollup = RollupCore(rollupAddress);
 
         // check upgrade executor owns proxyAdmin
         address upgradeExecutorExpectedAddress = computeCreateAddress(address(rollupCreator), 4);
@@ -384,9 +502,7 @@ contract RollupCreatorTest is Test {
 
         // upgrade executor owns rollup
         assertEq(
-            IOwnable(rollupAddress).owner(),
-            upgradeExecutorExpectedAddress,
-            "Invalid rollup owner"
+            IOwnable(rollupAddress).owner(), upgradeExecutorExpectedAddress, "Invalid rollup owner"
         );
         assertEq(
             _getProxyAdmin(rollupAddress),
@@ -395,12 +511,9 @@ contract RollupCreatorTest is Test {
         );
 
         // check rollupOwner has executor role
-        AccessControlUpgradeable executor = AccessControlUpgradeable(
-            upgradeExecutorExpectedAddress
-        );
+        AccessControlUpgradeable executor = AccessControlUpgradeable(upgradeExecutorExpectedAddress);
         assertTrue(
-            executor.hasRole(keccak256("EXECUTOR_ROLE"), rollupOwner),
-            "Invalid executor role"
+            executor.hasRole(keccak256("EXECUTOR_ROLE"), rollupOwner), "Invalid executor role"
         );
     }
 
@@ -410,15 +523,19 @@ contract RollupCreatorTest is Test {
         rollupCreator.freezeDeployment();
         assertTrue(rollupCreator.deploymentFrozen(), "rollupCreator not frozen");
 
-        ISequencerInbox.MaxTimeVariation memory timeVars = ISequencerInbox.MaxTimeVariation(
-            ((60 * 60 * 24) / 15),
-            12,
-            60 * 60 * 24,
-            60 * 60
+        ISequencerInbox.MaxTimeVariation memory timeVars =
+            ISequencerInbox.MaxTimeVariation(((60 * 60 * 24) / 15), 12, 60 * 60 * 24, 60 * 60);
+        uint256[] memory miniStakeValues = new uint256[](3);
+        miniStakeValues[0] = 1 ether;
+        miniStakeValues[1] = 2 ether;
+        miniStakeValues[2] = 3 ether;
+        AssertionState memory emptyState = AssertionState(
+            GlobalState([bytes32(0), bytes32(0)], [uint64(0), uint64(0)]),
+            MachineStatus.FINISHED,
+            bytes32(0)
         );
         Config memory config = Config({
             confirmPeriodBlocks: 20,
-            extraChallengeTimeBlocks: 200,
             stakeToken: address(0),
             baseStake: 1000,
             wasmModuleRoot: keccak256("wasm"),
@@ -426,8 +543,19 @@ contract RollupCreatorTest is Test {
             loserStakeEscrow: address(200),
             chainId: 1337,
             chainConfig: "abc",
-            genesisBlockNum: 15_000_000,
-            sequencerInboxMaxTimeVariation: timeVars
+            minimumAssertionPeriod: 75,
+            validatorAfkBlocks: 1234,
+            miniStakeValues: miniStakeValues,
+            sequencerInboxMaxTimeVariation: timeVars,
+            layerZeroBlockEdgeHeight: 2 ** 5,
+            layerZeroBigStepEdgeHeight: 2 ** 5,
+            layerZeroSmallStepEdgeHeight: 2 ** 5,
+            genesisAssertionState: emptyState,
+            genesisInboxCount: 0,
+            anyTrustFastConfirmer: address(0),
+            numBigStepLevel: 1,
+            challengeGracePeriodBlocks: 10,
+            bufferConfig: BufferConfig({threshold: 600, max: 14400, replenishRateInBasis: 500})
         });
 
         // prepare funds
@@ -446,16 +574,17 @@ contract RollupCreatorTest is Test {
 
         RollupCreator.RollupDeploymentParams memory deployParams = RollupCreator
             .RollupDeploymentParams({
-                config: config,
-                batchPosters: batchPosters,
-                validators: validators,
-                maxDataSize: MAX_DATA_SIZE,
-                nativeToken: address(0),
-                deployFactoriesToL2: true,
-                maxFeePerGasForRetryables: MAX_FEE_PER_GAS,
-                batchPosterManager: batchPosterManager,
-                eigenDACertVerifier: eigenDACertVerifier
-            });
+            config: config,
+            batchPosters: batchPosters,
+            validators: validators,
+            maxDataSize: MAX_DATA_SIZE,
+            nativeToken: address(0),
+            deployFactoriesToL2: true,
+            maxFeePerGasForRetryables: MAX_FEE_PER_GAS,
+            batchPosterManager: batchPosterManager,
+            feeTokenPricer: IFeeTokenPricer(address(0)),
+            eigenDACertVerifier: eigenDACertVerifier
+        });
 
         vm.expectRevert("Deployment no longer permitted from this RollupCreator");
         rollupCreator.createRollup{value: factoryDeploymentFunds}(deployParams);
@@ -467,24 +596,39 @@ contract RollupCreatorTest is Test {
         vm.startPrank(deployer);
 
         // deployment params
-        ISequencerInbox.MaxTimeVariation memory timeVars = ISequencerInbox.MaxTimeVariation(
-            ((60 * 60 * 24) / 15),
-            12,
-            60 * 60 * 24,
-            60 * 60
+        ISequencerInbox.MaxTimeVariation memory timeVars =
+            ISequencerInbox.MaxTimeVariation(((60 * 60 * 24) / 15), 12, 60 * 60 * 24, 60 * 60);
+        uint256[] memory miniStakeValues = new uint256[](3);
+        miniStakeValues[0] = 1 ether;
+        miniStakeValues[1] = 2 ether;
+        miniStakeValues[2] = 3 ether;
+        AssertionState memory emptyState = AssertionState(
+            GlobalState([bytes32(0), bytes32(0)], [uint64(0), uint64(0)]),
+            MachineStatus.FINISHED,
+            bytes32(0)
         );
         Config memory config = Config({
-            confirmPeriodBlocks: 20,
-            extraChallengeTimeBlocks: 200,
-            stakeToken: address(0),
             baseStake: 1000,
-            wasmModuleRoot: keccak256("wasm"),
-            owner: rollupOwner,
-            loserStakeEscrow: address(200),
             chainId: 1337,
             chainConfig: "abc",
-            genesisBlockNum: 15_000_000,
-            sequencerInboxMaxTimeVariation: timeVars
+            minimumAssertionPeriod: 75,
+            validatorAfkBlocks: 1234,
+            confirmPeriodBlocks: 567,
+            owner: rollupOwner,
+            sequencerInboxMaxTimeVariation: timeVars,
+            stakeToken: address(token),
+            wasmModuleRoot: keccak256("wasm"),
+            loserStakeEscrow: address(200),
+            genesisAssertionState: emptyState,
+            genesisInboxCount: 0,
+            miniStakeValues: miniStakeValues,
+            layerZeroBlockEdgeHeight: 2 ** 5,
+            layerZeroBigStepEdgeHeight: 2 ** 5,
+            layerZeroSmallStepEdgeHeight: 2 ** 5,
+            anyTrustFastConfirmer: address(0),
+            numBigStepLevel: 1,
+            challengeGracePeriodBlocks: 10,
+            bufferConfig: BufferConfig({threshold: 600, max: 14400, replenishRateInBasis: 500})
         });
 
         // prepare funds
@@ -502,19 +646,19 @@ contract RollupCreatorTest is Test {
 
         RollupCreator.RollupDeploymentParams memory deployParams = RollupCreator
             .RollupDeploymentParams({
-                config: config,
-                batchPosters: batchPosters,
-                validators: validators,
-                maxDataSize: MAX_DATA_SIZE,
-                nativeToken: address(0),
-                deployFactoriesToL2: true,
-                maxFeePerGasForRetryables: MAX_FEE_PER_GAS,
-                batchPosterManager: batchPosterManager,
-                eigenDACertVerifier: eigenDACertVerifier
-            });
-        address rollupAddress = rollupCreator.createRollup{value: factoryDeploymentFunds}(
-            deployParams
-        );
+            config: config,
+            batchPosters: batchPosters,
+            validators: validators,
+            maxDataSize: MAX_DATA_SIZE,
+            nativeToken: address(0),
+            deployFactoriesToL2: true,
+            maxFeePerGasForRetryables: MAX_FEE_PER_GAS,
+            batchPosterManager: batchPosterManager,
+            feeTokenPricer: IFeeTokenPricer(address(0)),
+            eigenDACertVerifier: eigenDACertVerifier
+        });
+        address rollupAddress =
+            rollupCreator.createRollup{value: factoryDeploymentFunds}(deployParams);
 
         vm.stopPrank();
 
@@ -522,16 +666,12 @@ contract RollupCreatorTest is Test {
         RollupCore rollup = RollupCore(rollupAddress);
         address inbox = address(rollup.inbox());
         address proxyAdmin = computeCreateAddress(address(rollupCreator), 1);
-        IUpgradeExecutor upgradeExecutor = IUpgradeExecutor(
-            computeCreateAddress(address(rollupCreator), 4)
-        );
+        IUpgradeExecutor upgradeExecutor =
+            IUpgradeExecutor(computeCreateAddress(address(rollupCreator), 4));
 
         Dummy newLogicImpl = new Dummy();
         bytes memory data = abi.encodeWithSelector(
-            ProxyUpgradeAction.perform.selector,
-            address(proxyAdmin),
-            inbox,
-            address(newLogicImpl)
+            ProxyUpgradeAction.perform.selector, address(proxyAdmin), inbox, address(newLogicImpl)
         );
 
         address upgradeAction = address(new ProxyUpgradeAction());
@@ -546,7 +686,7 @@ contract RollupCreatorTest is Test {
         internal
         returns (
             IOneStepProofEntry ospEntry,
-            IChallengeManager challengeManager,
+            IEdgeChallengeManager challengeManager,
             IRollupAdmin rollupAdminLogic,
             IRollupUser rollupUserLogic
         )
@@ -558,7 +698,7 @@ contract RollupCreatorTest is Test {
             new OneStepProverMath(),
             new OneStepProverHostIo()
         );
-        challengeManager = new ChallengeManager();
+        challengeManager = new EdgeChallengeManager();
 
         //// deploy rollup logic
         rollupAdminLogic = IRollupAdmin(new RollupAdminLogic());
@@ -567,35 +707,38 @@ contract RollupCreatorTest is Test {
         return (ospEntry, challengeManager, rollupAdminLogic, rollupUserLogic);
     }
 
-    function _getProxyAdmin(address proxy) internal view returns (address) {
+    function _getProxyAdmin(
+        address proxy
+    ) internal view returns (address) {
         bytes32 adminSlot = bytes32(uint256(keccak256("eip1967.proxy.admin")) - 1);
         return address(uint160(uint256(vm.load(proxy, adminSlot))));
     }
 
-    function _getImpl(address proxy) internal view returns (address) {
+    function _getImpl(
+        address proxy
+    ) internal view returns (address) {
         bytes32 implSlot = bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1);
         return address(uint160(uint256(vm.load(proxy, implSlot))));
     }
 
-    function _getPrimary(address proxy) internal view returns (address) {
+    function _getPrimary(
+        address proxy
+    ) internal view returns (address) {
         bytes32 primarySlot = bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1);
         return address(uint160(uint256(vm.load(proxy, primarySlot))));
     }
 
-    function _getSecondary(address proxy) internal view returns (address) {
-        bytes32 secondarySlot = bytes32(
-            uint256(keccak256("eip1967.proxy.implementation.secondary")) - 1
-        );
+    function _getSecondary(
+        address proxy
+    ) internal view returns (address) {
+        bytes32 secondarySlot =
+            bytes32(uint256(keccak256("eip1967.proxy.implementation.secondary")) - 1);
         return address(uint160(uint256(vm.load(proxy, secondarySlot))));
     }
 }
 
 contract ProxyUpgradeAction {
-    function perform(
-        address admin,
-        address payable target,
-        address newLogic
-    ) public payable {
+    function perform(address admin, address payable target, address newLogic) public payable {
         ProxyAdmin(admin).upgrade(TransparentUpgradeableProxy(target), newLogic);
     }
 }
