@@ -13,6 +13,7 @@ import {
   ArbSys__factory,
   CacheManager__factory,
 } from '../build/types'
+import { sleep } from './testSetup'
 
 const INIT_CACHE_SIZE = 536870912
 const INIT_DECAY = 10322197911
@@ -98,6 +99,9 @@ export async function deployContract(
 
   if (verify)
     await verifyContract(contractName, contract.address, constructorArgs)
+
+  // sleep 5 seconds to avoid nonce issues
+  await sleep(5_000)
 
   return contract
 }
