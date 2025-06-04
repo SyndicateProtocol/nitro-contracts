@@ -67,7 +67,6 @@
     "patch-package": "^6.5.1",
     "solady": "0.0.182"
   },
-  "private": false,
   "devDependencies": {
     "@arbitrum/sdk": "^3.7.3",
     "@eigenda/contracts": "0.1.0",
