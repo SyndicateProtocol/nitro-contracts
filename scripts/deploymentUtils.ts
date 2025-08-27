@@ -76,7 +76,6 @@ export async function deployContract(
 ): Promise<Contract> {
   const factory: ContractFactory = await ethers.getContractFactory(contractName)
   const connectedFactory: ContractFactory = factory.connect(signer)
-
   let deploymentArgs = [...constructorArgs]
   if (overrides) {
     deploymentArgs.push(overrides)
@@ -87,7 +86,6 @@ export async function deployContract(
     // }
     // deploymentArgs.push(overrides)
   }
-
   const contract: Contract = await connectedFactory.deploy(...deploymentArgs)
   await contract.deployTransaction.wait()
   console.log(
@@ -95,9 +93,12 @@ export async function deployContract(
       contract.address
     } ${constructorArgs.join(' ')}`
   )
+  
 
-  if (verify)
+  if (verify) {
+    await new Promise(r => setTimeout(r, 5_000));
     await verifyContract(contractName, contract.address, constructorArgs)
+  }
 
   return contract
 }

@@ -1,13 +1,11 @@
-import { ethers } from 'hardhat'
 import '@nomiclabs/hardhat-ethers'
-import { deployAllContracts, _isRunningOnArbitrum } from './deploymentUtils'
-import { maxDataSize, disableMessageFromOriginEvent } from './config'
+import { ethers } from 'hardhat'
+import { disableMessageFromOriginEvent, maxDataSize } from './config'
+import { _isRunningOnArbitrum, deployAllContracts } from './deploymentUtils'
 
-import { ArbSys__factory } from '../build/types'
 
 async function main() {
   const [signer] = await ethers.getSigners()
-
   console.log('Deploying contracts with maxDataSize:', maxDataSize)
   if (process.env['IGNORE_MAX_DATA_SIZE_WARNING'] !== 'true') {
     let isArbitrum = await _isRunningOnArbitrum(signer)
@@ -26,7 +24,7 @@ async function main() {
 
   try {
     // Deploying all contracts
-    const verify = false;
+    const verify = true;
     const contracts = await deployAllContracts(
       signer,
       ethers.BigNumber.from(maxDataSize),
@@ -48,6 +46,7 @@ async function main() {
     )
     console.log('Template is set on the Rollup Creator')
   } catch (error) {
+    console.error(error)
     console.error(
       'Deployment failed:',
       error instanceof Error ? error.message : error

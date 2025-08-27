@@ -1,13 +1,13 @@
 import '@nomicfoundation/hardhat-chai-matchers'
-import 'hardhat-deploy'
-import '@nomiclabs/hardhat-ethers'
 import '@nomicfoundation/hardhat-verify'
+import '@nomiclabs/hardhat-ethers'
 import '@typechain/hardhat'
-import 'solidity-coverage'
-import 'hardhat-gas-reporter'
-import 'hardhat-contract-sizer'
-import 'hardhat-ignore-warnings'
 import dotenv from 'dotenv'
+import 'hardhat-contract-sizer'
+import 'hardhat-deploy'
+import 'hardhat-gas-reporter'
+import 'hardhat-ignore-warnings'
+import 'solidity-coverage'
 
 dotenv.config()
 
@@ -144,7 +144,7 @@ module.exports = {
       },
     },
     mainnet: {
-      url: 'https://mainnet.infura.io/v3/' + process.env['INFURA_KEY'],
+      url: process.env['MAINNET_RPC_URL'],
       accounts: process.env['MAINNET_PRIVKEY']
         ? [process.env['MAINNET_PRIVKEY']]
         : [],
@@ -192,7 +192,7 @@ module.exports = {
         : [],
     },
     base: {
-      url: 'https://mainnet.base.org',
+      url: process.env['BASE_RPC_URL'],
       accounts: process.env['MAINNET_PRIVKEY']
         ? [process.env['MAINNET_PRIVKEY']]
         : [],
@@ -211,17 +211,7 @@ module.exports = {
     },
   },
   etherscan: {
-    apiKey: {
-      mainnet: process.env['ETHERSCAN_API_KEY'],
-      sepolia: process.env['ETHERSCAN_API_KEY'],
-      holesky: process.env['ETHERSCAN_API_KEY'],
-      arbitrumOne: process.env['ARBISCAN_API_KEY'],
-      nova: process.env['NOVA_ARBISCAN_API_KEY'],
-      arbSepolia: process.env['ARBISCAN_API_KEY'],
-      base: process.env['BASESCAN_API_KEY'],
-      baseSepolia: process.env['BASESCAN_API_KEY'],
-      custom: process.env['CUSTOM_ETHERSCAN_API_KEY'],
-    },
+    apiKey: process.env['ETHERSCAN_API_KEY'],
     customChains: [
       {
         network: 'nova',
