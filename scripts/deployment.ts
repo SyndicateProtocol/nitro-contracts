@@ -1,9 +1,8 @@
-import { ethers } from 'hardhat'
 import '@nomiclabs/hardhat-ethers'
-import { deployAllContracts, _isRunningOnArbitrum } from './deploymentUtils'
-import { maxDataSize, disableMessageFromOriginEvent } from './config'
+import { ethers } from 'hardhat'
+import { disableMessageFromOriginEvent, maxDataSize } from './config'
+import { _isRunningOnArbitrum, deployAllContracts } from './deploymentUtils'
 
-import { ArbSys__factory } from '../build/types'
 
 async function main() {
   const [signer] = await ethers.getSigners()
@@ -26,7 +25,7 @@ async function main() {
 
   try {
     // Deploying all contracts
-    const verify = false;
+    const verify = true;
     const contracts = await deployAllContracts(
       signer,
       ethers.BigNumber.from(maxDataSize),
