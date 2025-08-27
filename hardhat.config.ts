@@ -144,7 +144,7 @@ module.exports = {
       },
     },
     mainnet: {
-      url: 'https://mainnet.infura.io/v3/' + process.env['INFURA_KEY'],
+      url: process.env['MAINNET_RPC_URL'],
       accounts: process.env['MAINNET_PRIVKEY']
         ? [process.env['MAINNET_PRIVKEY']]
         : [],

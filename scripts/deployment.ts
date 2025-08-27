@@ -6,7 +6,6 @@ import { _isRunningOnArbitrum, deployAllContracts } from './deploymentUtils'
 
 async function main() {
   const [signer] = await ethers.getSigners()
-
   console.log('Deploying contracts with maxDataSize:', maxDataSize)
   if (process.env['IGNORE_MAX_DATA_SIZE_WARNING'] !== 'true') {
     let isArbitrum = await _isRunningOnArbitrum(signer)
@@ -47,6 +46,7 @@ async function main() {
     )
     console.log('Template is set on the Rollup Creator')
   } catch (error) {
+    console.error(error)
     console.error(
       'Deployment failed:',
       error instanceof Error ? error.message : error
