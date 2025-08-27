@@ -96,7 +96,7 @@ export async function deployContract(
   
 
   if (verify) {
-    await new Promise(r => setTimeout(r, 3_000));
+    await new Promise(r => setTimeout(r, 5_000));
     await verifyContract(contractName, contract.address, constructorArgs)
   }
 
